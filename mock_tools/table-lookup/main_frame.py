@@ -1,4 +1,4 @@
-"""嵌入式包裝 — 讓 excel整理工具的 MainWindow 跑在 Launcher 的分頁裡。
+"""嵌入式包裝 — 讓 資料對照彙整工具 的 MainWindow 跑在 Launcher 的分頁裡。
 
 實作 create_frame(parent) -> ttk.Frame，由 Launcher 動態載入。
 """
@@ -13,15 +13,15 @@ from tkinter import ttk
 _TOOL_ROOT = Path(__file__).parent  # 安裝後指向工具目錄，無需硬編路徑
 
 
-def _load_excel_main():
+def _load_tool_main():
     """用 importlib 直接從絕對路徑載入，完全不動 Launcher 的 app.* 名稱空間。"""
 
-    # 1. 載入 core.py → 唯一名稱 _excel_tool.core
+    # 1. 載入 core.py → 唯一名稱 _table_lookup.core
     core_spec = importlib.util.spec_from_file_location(
-        "_excel_tool.core", _TOOL_ROOT / "app" / "core.py"
+        "_table_lookup.core", _TOOL_ROOT / "app" / "core.py"
     )
     core_mod = importlib.util.module_from_spec(core_spec)
-    sys.modules["_excel_tool.core"] = core_mod
+    sys.modules["_table_lookup.core"] = core_mod
 
     # 2. 暫時讓 app.core 指向它（main.py 內部 from app.core import 需要）
     _prev_app_core = sys.modules.get("app.core")
@@ -29,12 +29,12 @@ def _load_excel_main():
     try:
         core_spec.loader.exec_module(core_mod)
 
-        # 3. 載入 main.py → 唯一名稱 _excel_tool.main
+        # 3. 載入 main.py → 唯一名稱 _table_lookup.main
         main_spec = importlib.util.spec_from_file_location(
-            "_excel_tool.main", _TOOL_ROOT / "app" / "main.py"
+            "_table_lookup.main", _TOOL_ROOT / "app" / "main.py"
         )
         main_mod = importlib.util.module_from_spec(main_spec)
-        sys.modules["_excel_tool.main"] = main_mod
+        sys.modules["_table_lookup.main"] = main_mod
         main_spec.loader.exec_module(main_mod)
     finally:
         # 4. 不管成功或失敗，一定還原 app.core
@@ -46,9 +46,9 @@ def _load_excel_main():
     return main_mod
 
 
-_excel_main = _load_excel_main()
-_MainWindow = _excel_main.MainWindow
-_configure_global_fonts = _excel_main._configure_global_fonts
+_tool_main = _load_tool_main()
+_MainWindow = _tool_main.MainWindow
+_configure_global_fonts = _tool_main._configure_global_fonts
 
 
 class _EmbeddedWindow(_MainWindow):

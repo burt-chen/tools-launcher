@@ -3,15 +3,15 @@
   "updated_at": "2026-05-16",
   "tools": [
     {
-      "id": "excel-merger",
-      "name": "Excel 整理工具",
-      "description": "用一份 key 清單從母檔篩選彙整出新表，支援 xlsx/csv/json",
+      "id": "table-lookup",
+      "name": "資料對照彙整工具",
+      "description": "載入兩份資料表，用 key 清單篩選主表並自訂輸出欄位，支援 xlsx / csv / json",
       "version": "1.2.0",
       "size_bytes": 70000,
-      "url": "https://github.com/burt-chen/excel-merger/releases/download/v1.2.0/excel-merger-v1.2.0.zip",
+      "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.2.0/table-lookup-v1.2.0.zip",
       "sha256": "",
       "category": "資料處理",
-      "homepage": "https://github.com/burt-chen/excel-merger"
+      "homepage": "https://github.com/burt-chen/table-lookup"
     }
   ]
 }

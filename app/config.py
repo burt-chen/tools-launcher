@@ -9,7 +9,7 @@ APP_NAME = "MyTools"
 # 例:set MYTOOLS_CATALOG_URL=file:///D:/工具開發/小工具管理/tools.json
 CATALOG_URL = os.environ.get(
     "MYTOOLS_CATALOG_URL",
-    "https://raw.githubusercontent.com/burt-chen/my-tools-launcher/main/tools.json",
+    "https://raw.githubusercontent.com/burt-chen/tools-launcher/main/tools.json",
 )
 
 # 本地資料夾:%LOCALAPPDATA%\MyTools\
