@@ -15,15 +15,23 @@ if errorlevel 1 (
 )
 
 if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
+if exist dist  rmdir /s /q dist
 if exist %NAME%.spec del /q %NAME%.spec
 
-pyinstaller ^
+python -m PyInstaller ^
     --noconfirm ^
     --clean ^
     --onefile ^
     --windowed ^
     --name %NAME% ^
+    --hidden-import tkinter.filedialog ^
+    --hidden-import tkinter.scrolledtext ^
+    --hidden-import tkinter.messagebox ^
+    --hidden-import tkinter.ttk ^
+    --hidden-import tkinter.font ^
+    --hidden-import tkinter.simpledialog ^
+    --hidden-import tkinter.colorchooser ^
+    --hidden-import importlib.util ^
     %ENTRY%
 
 if errorlevel 1 (
