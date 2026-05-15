@@ -1,0 +1,17 @@
+{
+  "catalog_version": 2,
+  "updated_at": "2026-05-16",
+  "tools": [
+    {
+      "id": "excel-merger",
+      "name": "Excel 整理工具",
+      "description": "用一份 key 清單從母檔篩選彙整出新表，支援 xlsx/csv/json",
+      "version": "1.2.0",
+      "size_bytes": 70000,
+      "url": "https://github.com/burt-chen/excel-merger/releases/download/v1.2.0/excel-merger-v1.2.0.zip",
+      "sha256": "",
+      "category": "資料處理",
+      "homepage": "https://github.com/burt-chen/excel-merger"
+    }
+  ]
+}
