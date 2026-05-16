@@ -40,6 +40,9 @@ python -m PyInstaller ^
     --hidden-import pyexpat ^
     --hidden-import decimal ^
     --hidden-import _decimal ^
+    --hidden-import smtplib ^
+    --collect-submodules email ^
+    --hidden-import ssl ^
     %ENTRY%
 
 if errorlevel 1 (
