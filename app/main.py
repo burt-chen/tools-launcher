@@ -242,6 +242,9 @@ class LauncherApp(tk.Tk):
         panel.pack(fill=tk.BOTH, expand=True)
         self._current_key = key
         self._update_nav_selection()
+        # 每次切到工具清單就重抓 catalog,即時反映最新版本
+        if key == "catalog" and isinstance(panel, CatalogPanel):
+            panel.refresh_catalog()
 
     def _get_panel(self, key: str) -> tk.Widget | None:
         if key in self._panels:
@@ -499,13 +502,11 @@ class CatalogPanel(ttk.Frame):
         self._cancel_flags: dict[str, bool] = {}
 
         self._build_ui()
-        self.after(100, self.refresh_catalog)
 
     def _build_ui(self) -> None:
         toolbar = ttk.Frame(self, padding=(12, 10))
         toolbar.pack(side=tk.TOP, fill=tk.X)
-        ttk.Button(toolbar, text="刷新", command=self.refresh_catalog).pack(side=tk.LEFT)
-        ttk.Label(toolbar, text="搜尋:").pack(side=tk.LEFT, padx=(12, 4))
+        ttk.Label(toolbar, text="搜尋:").pack(side=tk.LEFT, padx=(0, 4))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.render())
         ttk.Entry(toolbar, textvariable=self.search_var, width=24).pack(side=tk.LEFT)
