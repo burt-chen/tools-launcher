@@ -711,6 +711,9 @@ class ToolCard(ttk.Frame):
         cat = tool.get("category")
         if cat:
             ttk.Label(header, text=f"  [{cat}]", foreground="#888").pack(side=tk.LEFT)
+        if tool.get("hidden"):
+            ttk.Label(header, text="  [需解鎖工具]",
+                      foreground="#d80").pack(side=tk.LEFT)
         self.status_label = ttk.Label(header, text="", foreground="#0a7")
         self.status_label.pack(side=tk.LEFT, padx=(12, 0))
         self.button_frame = ttk.Frame(header)
