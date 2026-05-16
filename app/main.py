@@ -289,12 +289,14 @@ class LauncherApp(tk.Tk):
         self._installed = installer.load_installed()
         self._rebuild_nav()
 
-    def on_installed_changed(self) -> None:
+    def on_installed_changed(self, reinstalled_id: str | None = None) -> None:
         self._installed = installer.load_installed()
+        # 已移除的工具、以及剛(重)安裝的工具,都把舊快取面板丟掉,
+        # 讓下次開啟時以新版重建(否則更新後仍顯示舊版畫面)。
         for tid in list(self._panels.keys()):
             if tid in ("catalog", "settings"):
                 continue
-            if tid not in self._installed:
+            if tid not in self._installed or tid == reinstalled_id:
                 panel = self._panels.pop(tid)
                 if self._current_key == tid:
                     panel.pack_forget()
@@ -681,7 +683,7 @@ class CatalogPanel(ttk.Frame):
             self._installed = installer.load_installed()
             self.app.set_status(f"已安裝:{tool['name']} v{tool['version']}")
             self.render()
-            self.app.on_installed_changed()
+            self.app.on_installed_changed(tool["id"])
 
     def do_uninstall(self, tool: dict) -> None:
         if not messagebox.askyesno("移除", f"確定要移除「{tool['name']}」嗎?"):
