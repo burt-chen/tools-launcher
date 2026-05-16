@@ -7,11 +7,23 @@
       "name": "資料對照彙整工具",
       "description": "載入兩份資料表，用 key 清單篩選主表並自訂輸出欄位，支援 xlsx / csv / json",
       "version": "1.2.3",
-      "size_bytes": 22000,
+      "size_bytes": 22542,
       "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.2.3/table-lookup-v1.2.3.zip",
       "sha256": "",
       "category": "資料處理",
-      "homepage": "https://github.com/burt-chen/table-lookup"
+      "homepage": "https://github.com/burt-chen/table-lookup",
+      "versions": [
+        {
+          "version": "1.2.2",
+          "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.2.2/table-lookup-v1.2.2.zip",
+          "size_bytes": 22120
+        },
+        {
+          "version": "1.2.3",
+          "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.2.3/table-lookup-v1.2.3.zip",
+          "size_bytes": 22542
+        }
+      ]
     },
     {
       "id": "xml-batch-convert",
@@ -23,7 +35,14 @@
       "sha256": "",
       "category": "資料處理",
       "homepage": "https://github.com/burt-chen/xml-batch-convert",
-      "hidden": false
+      "hidden": false,
+      "versions": [
+        {
+          "version": "1.0.1",
+          "url": "https://github.com/burt-chen/xml-batch-convert/releases/download/v1.0.1/xml-batch-convert-v1.0.1.zip",
+          "size_bytes": 18296
+        }
+      ]
     },
     {
       "id": "salary",
@@ -34,7 +53,19 @@
       "url": "https://github.com/burt-chen/gf-salary/releases/download/v1.0.1/salary-v1.0.1.zip",
       "sha256": "",
       "category": "辦公自動化",
-      "homepage": "https://github.com/burt-chen/gf-salary"
+      "homepage": "https://github.com/burt-chen/gf-salary",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "url": "https://github.com/burt-chen/gf-salary/releases/download/v1.0.0/salary-v1.0.0.zip",
+          "size_bytes": 11241
+        },
+        {
+          "version": "1.0.1",
+          "url": "https://github.com/burt-chen/gf-salary/releases/download/v1.0.1/salary-v1.0.1.zip",
+          "size_bytes": 12049
+        }
+      ]
     }
   ],
   "master_unlock_hash": "9fe77c3d4fa85f0512de0057111a83edd494c9f8c8ebf93c4ab47208bb2351d4"

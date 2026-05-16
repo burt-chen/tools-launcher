@@ -409,7 +409,61 @@ class LauncherApp(tk.Tk):
             menu.add_command(label="還原預設名稱",
                              command=lambda: self._reset_tool_name(tool_id))
 
+        # 切換版本(至少兩個未作廢版本才顯示)
+        tool = self._tool_by_id(tool_id) or {}
+        visible_vers = [v for v in tool.get("versions", []) if not v.get("yanked")]
+        if len(visible_vers) > 1:
+            installed_ver = self._installed.get(tool_id, {}).get("version")
+            ver_menu = tk.Menu(menu, tearoff=False)
+            for v in reversed(visible_vers):   # 新版排上面
+                vnum = v.get("version", "")
+                label = f"v{vnum}" + ("  (目前)" if vnum == installed_ver else "")
+                ver_menu.add_command(
+                    label=label,
+                    command=lambda vv=v: self._switch_version(tool_id, vv))
+            menu.add_separator()
+            menu.add_cascade(label="切換版本", menu=ver_menu)
+
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _switch_version(self, tool_id: str, version_entry: dict) -> None:
+        vnum = version_entry.get("version", "")
+        installed_ver = self._installed.get(tool_id, {}).get("version")
+        if vnum == installed_ver:
+            messagebox.showinfo("提示", f"目前已是 v{vnum}")
+            return
+        tool = self._tool_by_id(tool_id) or {}
+        name = tool.get("name", tool_id)
+        if not messagebox.askyesno(
+                "切換版本",
+                f"確定把「{name}」切換到 v{vnum}?\n會重新下載並安裝該版本。"):
+            return
+        install_dict = {
+            "id": tool_id,
+            "name": name,
+            "version": vnum,
+            "url": version_entry.get("url", ""),
+            "size_bytes": version_entry.get("size_bytes", 0),
+            "sha256": "",
+        }
+        self.set_status(f"切換版本中:下載 {name} v{vnum}…")
+
+        def worker() -> None:
+            try:
+                installer.install(install_dict)
+                self.after(0, lambda: self._on_version_switched(tool_id, vnum, None))
+            except Exception as e:
+                self.after(0, lambda: self._on_version_switched(tool_id, vnum, e))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_version_switched(self, tool_id: str, vnum: str, err: Exception | None) -> None:
+        if err:
+            self.set_status("切換版本失敗")
+            messagebox.showerror("切換版本失敗", str(err))
+        else:
+            self.set_status(f"已切換到 v{vnum}")
+            self.on_installed_changed(tool_id)
 
     def _rename_tool(self, tool_id: str) -> None:
         new = simpledialog.askstring(

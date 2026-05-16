@@ -10,6 +10,7 @@
 ├── run.py              # 開發時直接執行
 ├── build.bat           # PyInstaller 打包成 exe
 ├── set_unlock.py       # 設定工具解鎖密碼的小工具(改 tools.json)
+├── manage_versions.py  # 管理工具版本清單 / 標記作廢(改 tools.json)
 ├── tools.json          # catalog(工具清單)
 └── app/
     ├── config.py       # 路徑、catalog URL、設定檔路徑
@@ -59,6 +60,13 @@ python run.py
 | `homepage` | | 工具首頁 |
 | `hidden` | | `true` 時預設隱藏,需解鎖碼才顯示 |
 | `unlock_hash` | | 解鎖碼的 sha256;搭配 `hidden` 使用 |
+| `versions` | | 版本清單(供切換 / 回滾用),見下 |
+
+頂層另有 `master_unlock_hash`(共用解鎖密碼的 sha256)。
+
+`versions` 是陣列,每筆 `{version, url, size_bytes, yanked?}` —— 列出工具的可用版本,
+讓 launcher 能切換 / 回滾到任一版。`yanked: true` 的版本不會出現在切換選單。
+`version` / `url` / `size_bytes`(頂層)代表「最新版」,安裝 / 更新邏輯用它。
 
 ## 隱藏工具與解鎖
 
@@ -95,6 +103,25 @@ python set_unlock.py --master --remove       # 移除共用密碼
   隱藏只擋 UI,不是真正的存取控制。要真正保密需改用私有 repo + Token。
 - 已解鎖記錄存在使用者本機 `settings.json` 的 `unlocked`。**更改密碼只對還沒解鎖過的人有效**,
   已解鎖的人不會被收回權限。
+
+## 版本切換 / 回滾
+
+每個工具的 `versions` 清單列出可用版本。launcher 中對已安裝工具按右鍵 →「切換版本」
+即可裝到清單裡的任一版(回滾到舊版或滾回新版)。硬碟上仍只保留一個版本,
+切換 = 重新下載該版安裝。
+
+用 [manage_versions.py](manage_versions.py) 維護版本清單:
+
+```powershell
+python manage_versions.py --list                              # 列出各工具版本
+python manage_versions.py <tool_id> add <version> <url> [size]  # 新增版本(設為最新)
+python manage_versions.py <tool_id> yank <version>             # 標記版本作廢
+python manage_versions.py <tool_id> unyank <version>           # 取消作廢
+```
+
+發新版時用 `add` 把版本加進清單;若某版有問題,用 `yank` 標記 ——
+作廢的版本不會出現在 launcher 的切換選單,但記錄與 GitHub Release 都保留。
+改完 `tools.json` 要 `git push`。
 
 ## 已安裝工具的位置
 
@@ -149,11 +176,11 @@ pip install pyinstaller
 - [x] 設定頁(切換工具時是否保留畫面與狀態)
 - [x] 我的最愛 + 自訂分組(左側作業清單,右鍵管理)
 - [x] 自訂工具顯示名稱(預設用 catalog 名稱)
-- [x] 隱藏工具 + 解鎖碼機制(set_unlock.py 設定密碼)
+- [x] 隱藏工具 + 解鎖碼機制(set_unlock.py 設定密碼;含共用密碼)
 - [x] 每次切換到「工具清單」自動重抓 catalog,即時反映最新版本
+- [x] 版本切換 / 回滾(右鍵切換版本;manage_versions.py 管理版本清單與作廢標記)
 
 ## 尚未實作(進階,參考設計文件 §5)
 
-- [ ] 版本回滾、多版本並存
 - [ ] Launcher 自更新
 - [ ] 私有 repo 的 Token 設定 UI(真正的存取控制)
