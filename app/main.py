@@ -1,6 +1,6 @@
-"""Tkinter Launcher UI — 左右分割版面。
+"""Tkinter Launcher UI — 左右分割版面,含我的最愛與自訂分組。
 
-左側「作業清單」:工具清單 + 已安裝工具 + 設定。
+左側「作業清單」:工具清單 + 已安裝工具(依最愛/群組分區) + 設定。
 右側:顯示當前選取項目的內容。
 """
 from __future__ import annotations
@@ -8,12 +8,12 @@ from __future__ import annotations
 import threading
 import traceback
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from typing import Callable
 
 from . import catalog, config, installer, launcher_run, python_env, settings
 
-SIDEBAR_W = 210
+SIDEBAR_W = 222
 SIDEBAR_BG = "#eef1f5"
 SIDEBAR_LINE = "#d4d9e0"
 NAV_HOVER = "#e0e6ee"
@@ -25,20 +25,23 @@ class NavItem(tk.Frame):
     """左側作業清單的一個可點項目。"""
 
     def __init__(self, parent: tk.Widget, key: str, text: str,
-                 on_click: Callable[[str], None]) -> None:
+                 on_click: Callable[[str], None], indent: int = 18,
+                 on_menu: Callable[[tk.Event, str], None] | None = None) -> None:
         super().__init__(parent, bg=SIDEBAR_BG, cursor="hand2")
         self.key = key
         self._on_click = on_click
         self._selected = False
         self.lbl = tk.Label(
             self, text=text, bg=SIDEBAR_BG, anchor="w",
-            padx=18, pady=9, font=NAV_FONT,
+            padx=indent, pady=7, font=NAV_FONT,
         )
         self.lbl.pack(fill=tk.X)
         for w in (self, self.lbl):
             w.bind("<Button-1>", lambda _e: self._on_click(self.key))
             w.bind("<Enter>", self._enter)
             w.bind("<Leave>", self._leave)
+            if on_menu is not None:
+                w.bind("<Button-3>", lambda e: on_menu(e, self.key))
 
     def _enter(self, _e: tk.Event) -> None:
         if not self._selected:
@@ -57,12 +60,65 @@ class NavItem(tk.Frame):
         self._paint(NAV_SEL if sel else SIDEBAR_BG)
 
 
+class GroupSection(tk.Frame):
+    """左側清單的一個可折疊分區(我的最愛 / 自訂群組 / 未分組)。"""
+
+    def __init__(self, parent: tk.Widget, title: str, kind: str,
+                 app: "LauncherApp", collapsed: bool) -> None:
+        super().__init__(parent, bg=SIDEBAR_BG)
+        self.title = title
+        self.kind = kind
+        self.app = app
+        self._collapsed = collapsed
+
+        self.header = tk.Frame(self, bg=SIDEBAR_BG, cursor="hand2")
+        self.header.pack(fill=tk.X)
+        self.tri = tk.Label(
+            self.header, text=("▸" if collapsed else "▾"),
+            bg=SIDEBAR_BG, font=("Segoe UI", 8), width=2,
+        )
+        self.tri.pack(side=tk.LEFT, padx=(8, 0))
+        self.title_lbl = tk.Label(
+            self.header, text=title, bg=SIDEBAR_BG, anchor="w", pady=5,
+            font=("Segoe UI", 9, "bold"), fg="#5a6472",
+        )
+        self.title_lbl.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.body = tk.Frame(self, bg=SIDEBAR_BG)
+        if not collapsed:
+            self.body.pack(fill=tk.X)
+
+        for w in (self.header, self.tri, self.title_lbl):
+            w.bind("<Button-1>", self._toggle)
+            if kind == "group":
+                w.bind("<Button-3>", self._menu)
+
+    def _toggle(self, _e: tk.Event | None = None) -> None:
+        self._collapsed = not self._collapsed
+        if self._collapsed:
+            self.body.pack_forget()
+            self.tri.configure(text="▸")
+            self.app.collapsed.add(self.title)
+        else:
+            self.body.pack(fill=tk.X)
+            self.tri.configure(text="▾")
+            self.app.collapsed.discard(self.title)
+
+    def _menu(self, event: tk.Event) -> None:
+        m = tk.Menu(self, tearoff=False)
+        m.add_command(label="重新命名群組",
+                      command=lambda: self.app.rename_group_dialog(self.title))
+        m.add_command(label="刪除群組",
+                      command=lambda: self.app.delete_group_dialog(self.title))
+        m.tk_popup(event.x_root, event.y_root)
+
+
 class LauncherApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(f"{config.APP_NAME} — 工具啟動器")
         self.geometry("1020x660")
-        self.minsize(780, 500)
+        self.minsize(800, 500)
 
         style = ttk.Style(self)
         try:
@@ -71,10 +127,11 @@ class LauncherApp(tk.Tk):
             pass
 
         self.settings = settings.load()
+        self.collapsed: set[str] = set()        # 折疊中的分區標題
         self._catalog: dict = {"tools": []}
         self._installed: dict = installer.load_installed()
-        self._panels: dict[str, tk.Widget] = {}      # key -> 內容面板
-        self._nav_items: dict[str, NavItem] = {}
+        self._panels: dict[str, tk.Widget] = {}
+        self._nav_items: list[NavItem] = []
         self._current_key: str | None = None
 
         self._build_layout()
@@ -92,7 +149,6 @@ class LauncherApp(tk.Tk):
         body = ttk.Frame(self)
         body.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # 左側
         self.sidebar = tk.Frame(body, bg=SIDEBAR_BG, width=SIDEBAR_W)
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.sidebar.pack_propagate(False)
@@ -104,7 +160,6 @@ class LauncherApp(tk.Tk):
         self.nav_frame = tk.Frame(self.sidebar, bg=SIDEBAR_BG)
         self.nav_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # 右側
         self.content = ttk.Frame(body)
         self.content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -116,51 +171,62 @@ class LauncherApp(tk.Tk):
     def _rebuild_nav(self) -> None:
         for w in self.nav_frame.winfo_children():
             w.destroy()
-        self._nav_items.clear()
+        self._nav_items = []
 
-        # 設定 — 釘在最下方
-        self._add_nav("settings", "設定", side=tk.BOTTOM)
+        # 設定 — 釘最下方
+        item = NavItem(self.nav_frame, "settings", "設定", self._show)
+        item.pack(side=tk.BOTTOM, fill=tk.X)
+        self._nav_items.append(item)
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
             side=tk.BOTTOM, fill=tk.X, padx=8, pady=4)
 
-        # 工具清單 — 釘在最上方
-        self._add_nav("catalog", "工具清單", side=tk.TOP)
+        # 工具清單 — 釘最上方
+        item = NavItem(self.nav_frame, "catalog", "工具清單", self._show)
+        item.pack(side=tk.TOP, fill=tk.X)
+        self._nav_items.append(item)
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
             side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
-        # 已安裝工具
-        if self._installed:
-            for tool_id, info in self._installed.items():
-                name = info.get("name") or self._catalog_name(tool_id) or tool_id
-                self._add_nav(tool_id, name, side=tk.TOP)
-        else:
+        installed_ids = list(self._installed.keys())
+        if not installed_ids:
             tk.Label(
                 self.nav_frame, text="(尚無已安裝工具)", bg=SIDEBAR_BG,
                 fg="#9aa0a8", anchor="w", padx=18, pady=6, font=("Segoe UI", 9),
             ).pack(side=tk.TOP, fill=tk.X)
+            self._update_nav_selection()
+            return
+
+        for title, kind, ids in settings.grouped_sections(installed_ids, self.settings):
+            sec = GroupSection(self.nav_frame, title, kind, self, title in self.collapsed)
+            sec.pack(side=tk.TOP, fill=tk.X)
+            for tid in ids:
+                nav = NavItem(
+                    sec.body, tid, self._tool_name(tid), self._show,
+                    indent=34, on_menu=self.show_tool_menu,
+                )
+                nav.pack(fill=tk.X)
+                self._nav_items.append(nav)
+            if not ids:
+                tk.Label(
+                    sec.body, text="(空)", bg=SIDEBAR_BG, fg="#9aa0a8",
+                    anchor="w", padx=34, pady=3, font=("Segoe UI", 9),
+                ).pack(fill=tk.X)
 
         self._update_nav_selection()
 
-    def _add_nav(self, key: str, text: str, side: str) -> None:
-        item = NavItem(self.nav_frame, key, text, self._show)
-        item.pack(side=side, fill=tk.X)
-        self._nav_items[key] = item
-
     def _update_nav_selection(self) -> None:
-        for key, item in self._nav_items.items():
-            item.set_selected(key == self._current_key)
+        for item in self._nav_items:
+            item.set_selected(item.key == self._current_key)
 
     # ---------- 右側內容切換 ----------
 
     def _show(self, key: str) -> None:
         if key == self._current_key:
             return
-
         old_key = self._current_key
         old_panel = self._panels.get(old_key) if old_key else None
         if old_panel is not None:
             old_panel.pack_forget()
-            # 工具面板且設定為不保留 → 切走時銷毀
             is_tool = old_key not in ("catalog", "settings")
             if is_tool and not self.settings.get("keep_tools_loaded", True):
                 old_panel.destroy()
@@ -168,7 +234,6 @@ class LauncherApp(tk.Tk):
 
         panel = self._get_panel(key)
         if panel is None:
-            # 載入失敗 → 留在原畫面
             if old_panel is not None and self._panels.get(old_key) is old_panel:
                 old_panel.pack(fill=tk.BOTH, expand=True)
             return
@@ -191,13 +256,15 @@ class LauncherApp(tk.Tk):
     def _build_tool_panel(self, tool_id: str) -> tk.Widget:
         info = self._installed.get(tool_id, {})
         tool = self._tool_by_id(tool_id) or {}
-        name = info.get("name") or tool.get("name") or tool_id
+        name = self._tool_name(tool_id)
         version = info.get("version") or tool.get("version") or ""
 
         wrapper = ttk.Frame(self.content)
         bar = ttk.Frame(wrapper, padding=(12, 7))
         bar.pack(side=tk.TOP, fill=tk.X)
-        ttk.Label(bar, text=name, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
+        title_lbl = ttk.Label(bar, text=name, font=("Segoe UI", 12, "bold"))
+        title_lbl.pack(side=tk.LEFT)
+        wrapper._tool_title = title_lbl  # type: ignore[attr-defined]
         if version:
             ttk.Label(bar, text=f"  v{version}", foreground="#888").pack(side=tk.LEFT)
         ttk.Separator(wrapper, orient="horizontal").pack(fill=tk.X)
@@ -216,15 +283,12 @@ class LauncherApp(tk.Tk):
     # ---------- catalog / installed 狀態 ----------
 
     def set_catalog(self, data: dict) -> None:
-        """由 CatalogPanel 在抓到清單後回呼。"""
         self._catalog = data or {"tools": []}
         self._installed = installer.load_installed()
         self._rebuild_nav()
 
     def on_installed_changed(self) -> None:
-        """工具安裝 / 移除後重建左側清單。"""
         self._installed = installer.load_installed()
-        # 清掉已移除工具的快取面板
         for tid in list(self._panels.keys()):
             if tid in ("catalog", "settings"):
                 continue
@@ -244,9 +308,143 @@ class LauncherApp(tk.Tk):
                 return t
         return None
 
-    def _catalog_name(self, tool_id: str) -> str | None:
-        t = self._tool_by_id(tool_id)
-        return t.get("name") if t else None
+    def _tool_name(self, tool_id: str) -> str:
+        info = self._installed.get(tool_id, {})
+        cat = self._tool_by_id(tool_id) or {}
+        default = info.get("name") or cat.get("name") or tool_id
+        return settings.tool_display_name(self.settings, tool_id, default)
+
+    # ---------- 最愛 / 群組 操作 ----------
+
+    def _refresh_views(self) -> None:
+        """設定變動後重建左側清單、重繪 catalog 與設定頁。"""
+        self._rebuild_nav()
+        cat = self._panels.get("catalog")
+        if isinstance(cat, CatalogPanel):
+            cat.render()
+        sp = self._panels.get("settings")
+        if isinstance(sp, SettingsPanel):
+            sp.refresh_groups()
+
+    def show_tool_menu(self, event: tk.Event, tool_id: str) -> None:
+        """工具項目 / 卡片的右鍵選單。"""
+        menu = tk.Menu(self, tearoff=False)
+        if settings.is_favorite(self.settings, tool_id):
+            menu.add_command(label="從我的最愛移除",
+                             command=lambda: self._toggle_fav(tool_id))
+        else:
+            menu.add_command(label="加入我的最愛",
+                             command=lambda: self._toggle_fav(tool_id))
+        menu.add_separator()
+
+        grp_menu = tk.Menu(menu, tearoff=False)
+        cur = settings.group_of(self.settings, tool_id)
+        grp_menu.add_command(
+            label=("✓ 未分組" if cur is None else "未分組"),
+            command=lambda: self._move_group(tool_id, None))
+        for g in self.settings.get("groups", []):
+            nm = g["name"]
+            grp_menu.add_command(
+                label=(f"✓ {nm}" if cur == nm else nm),
+                command=lambda n=nm: self._move_group(tool_id, n))
+        grp_menu.add_separator()
+        grp_menu.add_command(label="新增群組…",
+                             command=lambda: self._new_group_for(tool_id))
+        menu.add_cascade(label="移到群組", menu=grp_menu)
+
+        menu.add_separator()
+        menu.add_command(label="重新命名…",
+                         command=lambda: self._rename_tool(tool_id))
+        if settings.has_custom_name(self.settings, tool_id):
+            menu.add_command(label="還原預設名稱",
+                             command=lambda: self._reset_tool_name(tool_id))
+
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _rename_tool(self, tool_id: str) -> None:
+        new = simpledialog.askstring(
+            "重新命名工具", "工具顯示名稱(清空則還原預設):",
+            initialvalue=self._tool_name(tool_id), parent=self)
+        if new is None:
+            return
+        settings.set_tool_name(self.settings, tool_id, new.strip())
+        settings.save(self.settings)
+        self._apply_tool_title(tool_id)
+        self._refresh_views()
+
+    def _reset_tool_name(self, tool_id: str) -> None:
+        settings.set_tool_name(self.settings, tool_id, "")
+        settings.save(self.settings)
+        self._apply_tool_title(tool_id)
+        self._refresh_views()
+
+    def _apply_tool_title(self, tool_id: str) -> None:
+        """若該工具的分頁已開啟,更新標題列文字。"""
+        panel = self._panels.get(tool_id)
+        title = getattr(panel, "_tool_title", None)
+        if title is not None:
+            try:
+                title.configure(text=self._tool_name(tool_id))
+            except tk.TclError:
+                pass
+
+    def _toggle_fav(self, tool_id: str) -> None:
+        settings.toggle_favorite(self.settings, tool_id)
+        settings.save(self.settings)
+        self._refresh_views()
+
+    def _move_group(self, tool_id: str, group_name: str | None) -> None:
+        settings.assign_group(self.settings, tool_id, group_name)
+        settings.save(self.settings)
+        self._refresh_views()
+
+    def _new_group_for(self, tool_id: str) -> None:
+        name = simpledialog.askstring("新增群組", "群組名稱:", parent=self)
+        if not name or not name.strip():
+            return
+        name = name.strip()
+        if not settings.add_group(self.settings, name):
+            messagebox.showinfo("提示", f"群組「{name}」已存在,將直接移入。")
+        settings.assign_group(self.settings, tool_id, name)
+        settings.save(self.settings)
+        self._refresh_views()
+
+    def add_group_dialog(self) -> None:
+        name = simpledialog.askstring("新增群組", "群組名稱:", parent=self)
+        if not name or not name.strip():
+            return
+        if settings.add_group(self.settings, name.strip()):
+            settings.save(self.settings)
+            self._refresh_views()
+        else:
+            messagebox.showinfo("提示", "群組名稱已存在")
+
+    def rename_group_dialog(self, old: str) -> None:
+        new = simpledialog.askstring("重新命名群組", "新名稱:",
+                                     initialvalue=old, parent=self)
+        if not new or not new.strip():
+            return
+        new = new.strip()
+        if new == old:
+            return
+        if any(g["name"] == new for g in self.settings.get("groups", [])):
+            messagebox.showinfo("提示", "群組名稱重複")
+            return
+        settings.rename_group(self.settings, old, new)
+        if old in self.collapsed:
+            self.collapsed.discard(old)
+            self.collapsed.add(new)
+        settings.save(self.settings)
+        self._refresh_views()
+
+    def delete_group_dialog(self, name: str) -> None:
+        if not messagebox.askyesno(
+                "刪除群組", f"確定刪除群組「{name}」?\n(裡面的工具會變成未分組)"):
+            return
+        settings.remove_group(self.settings, name)
+        self.collapsed.discard(name)
+        settings.save(self.settings)
+        self._refresh_views()
 
 
 class CatalogPanel(ttk.Frame):
@@ -269,10 +467,24 @@ class CatalogPanel(ttk.Frame):
         ttk.Button(toolbar, text="刷新", command=self.refresh_catalog).pack(side=tk.LEFT)
         ttk.Label(toolbar, text="搜尋:").pack(side=tk.LEFT, padx=(12, 4))
         self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", lambda *_: self._render_list())
+        self.search_var.trace_add("write", lambda *_: self.render())
         ttk.Entry(toolbar, textvariable=self.search_var, width=24).pack(side=tk.LEFT)
         self.source_label = ttk.Label(toolbar, text="")
         self.source_label.pack(side=tk.RIGHT)
+
+        # 依安裝狀態篩選
+        filter_row = ttk.Frame(self, padding=(12, 0, 12, 8))
+        filter_row.pack(side=tk.TOP, fill=tk.X)
+        self.filter_var = tk.StringVar(value="all")
+        self._filter_btns: dict[str, tuple[ttk.Radiobutton, str]] = {}
+        for key, label in (("all", "全部"), ("installed", "已安裝"),
+                           ("not_installed", "未安裝"), ("updatable", "可更新")):
+            rb = ttk.Radiobutton(
+                filter_row, text=label, value=key, variable=self.filter_var,
+                style="Toolbutton", command=self.render,
+            )
+            rb.pack(side=tk.LEFT, padx=(0, 4))
+            self._filter_btns[key] = (rb, label)
 
         container = ttk.Frame(self)
         container.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
@@ -324,18 +536,46 @@ class CatalogPanel(ttk.Frame):
         src_text = "線上" if source == "online" else "離線快取"
         self.source_label.config(text=f"來源:{src_text}")
         self.app.set_status(f"已載入 {n} 個工具")
-        self._render_list()
+        self.render()
         self.app.set_catalog(self._catalog)
 
     # ---------- 渲染 ----------
 
-    def _render_list(self) -> None:
+    def render(self) -> None:
         for child in self.list_frame.winfo_children():
             child.destroy()
         self._cards.clear()
 
+        all_tools = self._catalog.get("tools", [])
+
+        # 計算各狀態數量,更新篩選鈕文字
+        counts = {"all": 0, "installed": 0, "not_installed": 0, "updatable": 0}
+        for t in all_tools:
+            iv = self.installed_version(t["id"])
+            counts["all"] += 1
+            if iv is None:
+                counts["not_installed"] += 1
+            else:
+                counts["installed"] += 1
+                if iv != t.get("version"):
+                    counts["updatable"] += 1
+        for key, (rb, label) in self._filter_btns.items():
+            rb.configure(text=f"{label} ({counts[key]})")
+
+        flt = self.filter_var.get()
+
+        def keep(t: dict) -> bool:
+            iv = self.installed_version(t["id"])
+            if flt == "installed":
+                return iv is not None
+            if flt == "not_installed":
+                return iv is None
+            if flt == "updatable":
+                return iv is not None and iv != t.get("version")
+            return True
+
+        tools = [t for t in all_tools if keep(t)]
         keyword = self.search_var.get().strip().lower()
-        tools = self._catalog.get("tools", [])
         if keyword:
             tools = [
                 t for t in tools
@@ -347,11 +587,13 @@ class CatalogPanel(ttk.Frame):
         if not tools:
             ttk.Label(self.list_frame, text="(沒有符合的工具)", padding=20).pack()
             return
-
         for tool in tools:
-            card = ToolCard(self.list_frame, tool, self)
-            card.pack(side=tk.TOP, fill=tk.X, pady=4)
-            self._cards[tool["id"]] = card
+            self._make_card(tool)
+
+    def _make_card(self, tool: dict) -> None:
+        card = ToolCard(self.list_frame, tool, self)
+        card.pack(side=tk.TOP, fill=tk.X, pady=4)
+        self._cards[tool["id"]] = card
 
     # ---------- 動作 ----------
 
@@ -399,7 +641,7 @@ class CatalogPanel(ttk.Frame):
         else:
             self._installed = installer.load_installed()
             self.app.set_status(f"已安裝:{tool['name']} v{tool['version']}")
-            self._render_list()
+            self.render()
             self.app.on_installed_changed()
 
     def do_uninstall(self, tool: dict) -> None:
@@ -409,7 +651,7 @@ class CatalogPanel(ttk.Frame):
             installer.uninstall(tool["id"])
             self._installed = installer.load_installed()
             self.app.set_status(f"已移除:{tool['name']}")
-            self._render_list()
+            self.render()
             self.app.on_installed_changed()
         except Exception as e:
             messagebox.showerror("移除失敗", str(e))
@@ -513,14 +755,11 @@ class SettingsPanel(ttk.Frame):
 
         general = ttk.LabelFrame(self, text="一般", padding=14)
         general.pack(fill=tk.X, anchor="w")
-
         self.keep_var = tk.BooleanVar(
             value=self.app.settings.get("keep_tools_loaded", True))
         ttk.Checkbutton(
-            general,
-            text="切換工具時保留工具畫面與狀態",
-            variable=self.keep_var,
-            command=self._on_keep_changed,
+            general, text="切換工具時保留工具畫面與狀態",
+            variable=self.keep_var, command=self._on_keep_changed,
         ).pack(anchor="w")
         ttk.Label(
             general,
@@ -529,11 +768,44 @@ class SettingsPanel(ttk.Frame):
             foreground="#666", justify=tk.LEFT,
         ).pack(anchor="w", padx=(22, 0), pady=(2, 0))
 
+        groups_box = ttk.LabelFrame(self, text="工具分組", padding=14)
+        groups_box.pack(fill=tk.X, anchor="w", pady=(14, 0))
+        ttk.Label(
+            groups_box,
+            text="在左側作業清單的工具項目上按右鍵,可加入我的最愛或移到群組。",
+            foreground="#666",
+        ).pack(anchor="w", pady=(0, 8))
+        self.groups_inner = ttk.Frame(groups_box)
+        self.groups_inner.pack(fill=tk.X)
+        ttk.Button(groups_box, text="新增群組",
+                   command=self.app.add_group_dialog).pack(anchor="w", pady=(8, 0))
+        self.refresh_groups()
+
     def _on_keep_changed(self) -> None:
         self.app.settings["keep_tools_loaded"] = self.keep_var.get()
         settings.save(self.app.settings)
         state = "保留" if self.keep_var.get() else "每次重新載入"
         self.app.set_status(f"設定已儲存:切換工具時{state}")
+
+    def refresh_groups(self) -> None:
+        for w in self.groups_inner.winfo_children():
+            w.destroy()
+        groups = self.app.settings.get("groups", [])
+        if not groups:
+            ttk.Label(self.groups_inner, text="(尚無群組)", foreground="#9aa0a8").pack(anchor="w")
+            return
+        for g in groups:
+            row = ttk.Frame(self.groups_inner)
+            row.pack(fill=tk.X, pady=2)
+            ttk.Label(row, text=g["name"], width=18, anchor="w").pack(side=tk.LEFT)
+            ttk.Label(row, text=f"{len(g.get('tools', []))} 個工具",
+                      foreground="#888").pack(side=tk.LEFT, padx=(0, 8))
+            ttk.Button(row, text="刪除", width=6,
+                       command=lambda nm=g["name"]: self.app.delete_group_dialog(nm)
+                       ).pack(side=tk.RIGHT, padx=2)
+            ttk.Button(row, text="重新命名", width=9,
+                       command=lambda nm=g["name"]: self.app.rename_group_dialog(nm)
+                       ).pack(side=tk.RIGHT, padx=2)
 
 
 def _fmt_size(n: float) -> str:
@@ -547,11 +819,10 @@ def _fmt_size(n: float) -> str:
 def main() -> None:
     config.ensure_dirs()
 
-    # 若內嵌 Python 尚未就緒,先跑安裝精靈
     if not python_env.is_ready():
         _run_python_setup()
         if not python_env.is_ready():
-            return  # 使用者取消或失敗,不啟動主視窗
+            return
 
     app = LauncherApp()
     app.mainloop()
