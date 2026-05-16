@@ -111,6 +111,7 @@ def install(
     installed_at = datetime.now().isoformat(timespec="seconds")
     installed = load_installed()
     installed[tool_id] = {
+        "name": tool.get("name", tool_id),
         "version": tool["version"],
         "path": str(dest_dir),
         "installed_at": installed_at,

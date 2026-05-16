@@ -19,6 +19,7 @@ ROOT = Path(_LOCALAPPDATA) / APP_NAME
 TOOLS_DIR = ROOT / "tools"
 INSTALLED_JSON = ROOT / "installed.json"
 CATALOG_CACHE = ROOT / "catalog_cache.json"
+SETTINGS_JSON = ROOT / "settings.json"
 
 HTTP_TIMEOUT = 10
 DOWNLOAD_CHUNK = 64 * 1024

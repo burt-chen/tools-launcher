@@ -18,6 +18,9 @@ if exist build rmdir /s /q build
 if exist dist  rmdir /s /q dist
 if exist %NAME%.spec del /q %NAME%.spec
 
+REM 注意:launcher 是動態載入工具的 host。
+REM PyInstaller 只會打包 launcher 自己用到的標準庫,
+REM 但工具(如 openpyxl)需要 xml 等模組,必須在此明確納入。
 python -m PyInstaller ^
     --noconfirm ^
     --clean ^
@@ -32,6 +35,11 @@ python -m PyInstaller ^
     --hidden-import tkinter.simpledialog ^
     --hidden-import tkinter.colorchooser ^
     --hidden-import importlib.util ^
+    --collect-submodules xml ^
+    --hidden-import _elementtree ^
+    --hidden-import pyexpat ^
+    --hidden-import decimal ^
+    --hidden-import _decimal ^
     %ENTRY%
 
 if errorlevel 1 (
