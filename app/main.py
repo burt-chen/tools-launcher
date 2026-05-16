@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import threading
 import traceback
 import tkinter as tk
@@ -187,7 +188,8 @@ class LauncherApp(tk.Tk):
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
             side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
-        installed_ids = list(self._installed.keys())
+        installed_ids = [tid for tid in self._installed
+                         if self._installed_visible(tid)]
         if not installed_ids:
             tk.Label(
                 self.nav_frame, text="(尚無已安裝工具)", bg=SIDEBAR_BG,
@@ -313,6 +315,42 @@ class LauncherApp(tk.Tk):
         cat = self._tool_by_id(tool_id) or {}
         default = info.get("name") or cat.get("name") or tool_id
         return settings.tool_display_name(self.settings, tool_id, default)
+
+    # ---------- 隱藏工具 / 解鎖 ----------
+
+    def _is_visible(self, tool: dict) -> bool:
+        """catalog 工具是否可見:隱藏且未解鎖 → 不可見。"""
+        if tool.get("hidden") and tool.get("id") not in self.settings.get("unlocked", []):
+            return False
+        return True
+
+    def _installed_visible(self, tool_id: str) -> bool:
+        """已安裝工具是否該顯示在左側清單。"""
+        t = self._tool_by_id(tool_id)
+        if t is None:
+            return True  # 不在 catalog,無法判斷,仍顯示
+        return self._is_visible(t)
+
+    def try_unlock(self, code: str) -> list[str]:
+        """以解鎖碼比對隱藏工具的 unlock_hash;回傳這次新解鎖的工具名稱清單。"""
+        code = (code or "").strip()
+        if not code:
+            return []
+        digest = hashlib.sha256(code.encode("utf-8")).hexdigest().lower()
+        unlocked = self.settings.setdefault("unlocked", [])
+        newly: list[str] = []
+        for t in self._catalog.get("tools", []):
+            if not t.get("hidden"):
+                continue
+            if str(t.get("unlock_hash", "")).lower() != digest:
+                continue
+            if t["id"] not in unlocked:
+                unlocked.append(t["id"])
+                newly.append(t.get("name", t["id"]))
+        if newly:
+            settings.save(self.settings)
+            self._refresh_views()
+        return newly
 
     # ---------- 最愛 / 群組 操作 ----------
 
@@ -546,7 +584,8 @@ class CatalogPanel(ttk.Frame):
             child.destroy()
         self._cards.clear()
 
-        all_tools = self._catalog.get("tools", [])
+        all_tools = [t for t in self._catalog.get("tools", [])
+                     if self.app._is_visible(t)]
 
         # 計算各狀態數量,更新篩選鈕文字
         counts = {"all": 0, "installed": 0, "not_installed": 0, "updatable": 0}
@@ -780,6 +819,34 @@ class SettingsPanel(ttk.Frame):
         ttk.Button(groups_box, text="新增群組",
                    command=self.app.add_group_dialog).pack(anchor="w", pady=(8, 0))
         self.refresh_groups()
+
+        # 解鎖隱藏工具
+        unlock_box = ttk.LabelFrame(self, text="解鎖工具", padding=14)
+        unlock_box.pack(fill=tk.X, anchor="w", pady=(14, 0))
+        ttk.Label(
+            unlock_box,
+            text="部分工具預設隱藏,輸入解鎖碼後才會顯示在工具清單。",
+            foreground="#666",
+        ).pack(anchor="w", pady=(0, 8))
+        row = ttk.Frame(unlock_box)
+        row.pack(anchor="w")
+        self.unlock_var = tk.StringVar()
+        entry = ttk.Entry(row, textvariable=self.unlock_var, width=28, show="*")
+        entry.pack(side=tk.LEFT)
+        entry.bind("<Return>", lambda _e: self._do_unlock())
+        ttk.Button(row, text="解鎖", command=self._do_unlock).pack(side=tk.LEFT, padx=(6, 0))
+        self.unlock_status = ttk.Label(unlock_box, text="")
+        self.unlock_status.pack(anchor="w", pady=(6, 0))
+
+    def _do_unlock(self) -> None:
+        newly = self.app.try_unlock(self.unlock_var.get())
+        if newly:
+            self.unlock_status.configure(
+                text=f"已解鎖:{', '.join(newly)}", foreground="#0a7")
+            self.unlock_var.set("")
+        else:
+            self.unlock_status.configure(
+                text="解鎖碼不正確,或沒有對應的隱藏工具", foreground="#c0392b")
 
     def _on_keep_changed(self) -> None:
         self.app.settings["keep_tools_loaded"] = self.keep_var.get()

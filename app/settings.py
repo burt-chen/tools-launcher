@@ -14,11 +14,14 @@ DEFAULTS = {
     "groups": [],
     # 使用者自訂的工具顯示名稱:{tool_id: name}
     "tool_names": {},
+    # 已解鎖的隱藏工具 id 清單
+    "unlocked": [],
 }
 
 
 def load() -> dict:
-    s = {"keep_tools_loaded": True, "favorites": [], "groups": [], "tool_names": {}}
+    s = {"keep_tools_loaded": True, "favorites": [], "groups": [],
+         "tool_names": {}, "unlocked": []}
     if config.SETTINGS_JSON.exists():
         try:
             data = json.loads(config.SETTINGS_JSON.read_text(encoding="utf-8"))
@@ -29,6 +32,7 @@ def load() -> dict:
     s.setdefault("favorites", [])
     s.setdefault("groups", [])
     s.setdefault("tool_names", {})
+    s.setdefault("unlocked", [])
     return s
 
 

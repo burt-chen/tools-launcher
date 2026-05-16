@@ -22,7 +22,9 @@
       "url": "https://github.com/burt-chen/xml-batch-convert/releases/download/v1.0.0/xml-batch-convert-v1.0.0.zip",
       "sha256": "",
       "category": "資料處理",
-      "homepage": "https://github.com/burt-chen/xml-batch-convert"
+      "homepage": "https://github.com/burt-chen/xml-batch-convert",
+      "hidden": true,
+      "unlock_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
     }
   ]
 }
