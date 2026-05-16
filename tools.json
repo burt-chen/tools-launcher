@@ -24,6 +24,17 @@
       "category": "資料處理",
       "homepage": "https://github.com/burt-chen/xml-batch-convert",
       "hidden": false
+    },
+    {
+      "id": "salary",
+      "name": "薪資單批處理工具",
+      "description": "員工清單管理、PDF 薪資單批量重命名、批次寄送薪資單郵件",
+      "version": "1.0.0",
+      "size_bytes": 11241,
+      "url": "https://github.com/burt-chen/gf-salary/releases/download/v1.0.0/salary-v1.0.0.zip",
+      "sha256": "",
+      "category": "辦公自動化",
+      "homepage": "https://github.com/burt-chen/gf-salary"
     }
   ]
 }
