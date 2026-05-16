@@ -6,3 +6,4 @@ dist/
 _test_data/
 *.spec
 python/
+unlock_records.json

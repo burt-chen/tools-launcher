@@ -337,19 +337,26 @@ class LauncherApp(tk.Tk):
         return self._is_visible(t)
 
     def try_unlock(self, code: str) -> list[str]:
-        """以解鎖碼比對隱藏工具的 unlock_hash;回傳這次新解鎖的工具名稱清單。"""
+        """以解鎖碼比對隱藏工具;回傳這次新解鎖的工具名稱清單。
+
+        共用密碼(master_unlock_hash)比中 → 解鎖全部隱藏工具;
+        否則比對各工具的 unlock_hash → 只解鎖對應工具。
+        """
         code = (code or "").strip()
         if not code:
             return []
         digest = hashlib.sha256(code.encode("utf-8")).hexdigest().lower()
         unlocked = self.settings.setdefault("unlocked", [])
         newly: list[str] = []
+
+        master = str(self._catalog.get("master_unlock_hash", "")).lower()
+        is_master = bool(master) and digest == master
+
         for t in self._catalog.get("tools", []):
             if not t.get("hidden"):
                 continue
-            if str(t.get("unlock_hash", "")).lower() != digest:
-                continue
-            if t["id"] not in unlocked:
+            matched = is_master or str(t.get("unlock_hash", "")).lower() == digest
+            if matched and t["id"] not in unlocked:
                 unlocked.append(t["id"])
                 newly.append(t.get("name", t["id"]))
         if newly:

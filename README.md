@@ -65,19 +65,33 @@ python run.py
 把工具加上 `"hidden": true` 與 `"unlock_hash"`,launcher 預設**不會顯示**它
 (工具清單與左側作業清單都看不到)。使用者要在「設定」頁輸入正確解鎖碼才會出現。
 
+兩種解鎖碼:
+
+- **個別密碼**(每工具的 `unlock_hash`)— 只解鎖該工具
+- **共用密碼**(tools.json 最上層的 `master_unlock_hash`)— 一次解鎖所有隱藏工具
+
 設定 / 更改解鎖密碼用 [set_unlock.py](set_unlock.py):
 
 ```powershell
-python set_unlock.py --list                       # 看各工具公開 / 隱藏狀態
-python set_unlock.py <tool_id> <password>          # 設密碼(同時設為隱藏)
-python set_unlock.py <tool_id> --public            # 改回公開
+python set_unlock.py --list                  # 列出工具狀態與已設定的密碼
+python set_unlock.py <tool_id> <password>    # 設工具個別密碼(設為隱藏)
+python set_unlock.py <tool_id> --public      # 改回公開
+python set_unlock.py --master <password>     # 設共用密碼
+python set_unlock.py --master --remove       # 移除共用密碼
 ```
 
 改完 `tools.json` 後要 `git push` 才會對使用者生效。
 
+密碼的存放:
+
+- `tools.json`(公開)只存密碼的 **sha256 雜湊**,反推不出明碼。
+- 明碼記錄存在開發端本機的 `unlock_records.json`(已列入 `.gitignore`,不會上傳)。
+  `set_unlock.py --list` 讀的就是這份,所以能顯示你自己設過的明碼密碼。
+- launcher 發給使用者,只讀公開的 `tools.json`,**永遠不會顯示密碼**。
+
 注意事項:
 
-- `tools.json` 是公開的,`unlock_hash` 只存雜湊、反推不出密碼,但**下載網址仍可見** ——
+- `tools.json` 是公開的,雜湊反推不出密碼,但**下載網址仍可見** ——
   隱藏只擋 UI,不是真正的存取控制。要真正保密需改用私有 repo + Token。
 - 已解鎖記錄存在使用者本機 `settings.json` 的 `unlocked`。**更改密碼只對還沒解鎖過的人有效**,
   已解鎖的人不會被收回權限。
