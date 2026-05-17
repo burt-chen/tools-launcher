@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from typing import Callable
 
-from . import catalog, config, installer, launcher_run, python_env, settings
+from . import catalog, config, installer, launcher_run, python_env, self_update, settings
 
 SIDEBAR_W = 222
 SIDEBAR_BG = "#eef1f5"
@@ -134,6 +134,7 @@ class LauncherApp(tk.Tk):
         self._panels: dict[str, tk.Widget] = {}
         self._nav_items: list[NavItem] = []
         self._current_key: str | None = None
+        self._launcher_update: tuple[str, str] | None = None  # (version, url)
 
         self._build_layout()
         self._rebuild_nav()
@@ -174,8 +175,9 @@ class LauncherApp(tk.Tk):
             w.destroy()
         self._nav_items = []
 
-        # 設定 — 釘最下方
-        item = NavItem(self.nav_frame, "settings", "設定", self._show)
+        # 設定 — 釘最下方;有 launcher 新版時標示
+        settings_label = "設定（有新版）" if self._launcher_update else "設定"
+        item = NavItem(self.nav_frame, "settings", settings_label, self._show)
         item.pack(side=tk.BOTTOM, fill=tk.X)
         self._nav_items.append(item)
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
@@ -290,6 +292,12 @@ class LauncherApp(tk.Tk):
     def set_catalog(self, data: dict) -> None:
         self._catalog = data or {"tools": []}
         self._installed = installer.load_installed()
+        self._launcher_update = self_update.available_update(self._catalog)
+        # 設定面板若已建好且非當前顯示,丟掉讓它重建,反映 launcher 版本資訊
+        sp = self._panels.get("settings")
+        if sp is not None and self._current_key != "settings":
+            self._panels.pop("settings")
+            sp.destroy()
         self._rebuild_nav()
 
     def on_installed_changed(self, reinstalled_id: str | None = None) -> None:
@@ -364,6 +372,54 @@ class LauncherApp(tk.Tk):
             self._refresh_views()
         return newly
 
+    # ---------- Launcher 自我更新 ----------
+
+    def _do_launcher_update(self) -> None:
+        if not self._launcher_update:
+            return
+        version, url = self._launcher_update
+        if not messagebox.askyesno(
+                "更新 Launcher",
+                f"確定更新 Launcher 到 v{version}?\n"
+                "程式會關閉並自動重新開啟。"):
+            return
+
+        win = tk.Toplevel(self)
+        win.title("更新 Launcher")
+        win.geometry("400x140")
+        win.resizable(False, False)
+        win.transient(self)
+        ttk.Label(win, text=f"正在下載 Launcher v{version}…",
+                  padding=(20, 18, 20, 6)).pack(anchor="w")
+        pbar = ttk.Progressbar(win, maximum=100, length=360)
+        pbar.pack(padx=20, pady=(0, 6))
+        msg_var = tk.StringVar(value="")
+        ttk.Label(win, textvariable=msg_var, foreground="#666",
+                  padding=(20, 0)).pack(anchor="w")
+
+        def on_progress(d: int, t: int) -> None:
+            if t > 0:
+                win.after(0, lambda: pbar.configure(value=d / t * 100))
+                win.after(0, lambda: msg_var.set(f"{_fmt_size(d)} / {_fmt_size(t)}"))
+            else:
+                win.after(0, lambda: msg_var.set(_fmt_size(d)))
+
+        def worker() -> None:
+            try:
+                self_update.do_update(url, on_progress)
+                win.after(0, self.destroy)   # 新版已啟動,關閉本程式
+            except Exception as e:
+                win.after(0, lambda: self._launcher_update_failed(win, e))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _launcher_update_failed(self, win: tk.Toplevel, err: Exception) -> None:
+        try:
+            win.destroy()
+        except tk.TclError:
+            pass
+        messagebox.showerror("更新失敗", f"Launcher 更新失敗:\n{err}")
+
     # ---------- 最愛 / 群組 操作 ----------
 
     def _refresh_views(self) -> None:
@@ -409,61 +465,7 @@ class LauncherApp(tk.Tk):
             menu.add_command(label="還原預設名稱",
                              command=lambda: self._reset_tool_name(tool_id))
 
-        # 切換版本(至少兩個未作廢版本才顯示)
-        tool = self._tool_by_id(tool_id) or {}
-        visible_vers = [v for v in tool.get("versions", []) if not v.get("yanked")]
-        if len(visible_vers) > 1:
-            installed_ver = self._installed.get(tool_id, {}).get("version")
-            ver_menu = tk.Menu(menu, tearoff=False)
-            for v in reversed(visible_vers):   # 新版排上面
-                vnum = v.get("version", "")
-                label = f"v{vnum}" + ("  (目前)" if vnum == installed_ver else "")
-                ver_menu.add_command(
-                    label=label,
-                    command=lambda vv=v: self._switch_version(tool_id, vv))
-            menu.add_separator()
-            menu.add_cascade(label="切換版本", menu=ver_menu)
-
         menu.tk_popup(event.x_root, event.y_root)
-
-    def _switch_version(self, tool_id: str, version_entry: dict) -> None:
-        vnum = version_entry.get("version", "")
-        installed_ver = self._installed.get(tool_id, {}).get("version")
-        if vnum == installed_ver:
-            messagebox.showinfo("提示", f"目前已是 v{vnum}")
-            return
-        tool = self._tool_by_id(tool_id) or {}
-        name = tool.get("name", tool_id)
-        if not messagebox.askyesno(
-                "切換版本",
-                f"確定把「{name}」切換到 v{vnum}?\n會重新下載並安裝該版本。"):
-            return
-        install_dict = {
-            "id": tool_id,
-            "name": name,
-            "version": vnum,
-            "url": version_entry.get("url", ""),
-            "size_bytes": version_entry.get("size_bytes", 0),
-            "sha256": "",
-        }
-        self.set_status(f"切換版本中:下載 {name} v{vnum}…")
-
-        def worker() -> None:
-            try:
-                installer.install(install_dict)
-                self.after(0, lambda: self._on_version_switched(tool_id, vnum, None))
-            except Exception as e:
-                self.after(0, lambda: self._on_version_switched(tool_id, vnum, e))
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    def _on_version_switched(self, tool_id: str, vnum: str, err: Exception | None) -> None:
-        if err:
-            self.set_status("切換版本失敗")
-            messagebox.showerror("切換版本失敗", str(err))
-        else:
-            self.set_status(f"已切換到 v{vnum}")
-            self.on_installed_changed(tool_id)
 
     def _rename_tool(self, tool_id: str) -> None:
         new = simpledialog.askstring(
@@ -813,11 +815,48 @@ class ToolCard(ttk.Frame):
             self.status_label.config(
                 text=f"已安裝 v{installed_ver} → 有更新 v{latest}", foreground="#d80")
             self._add_btn("更新", lambda: self.panel.do_install(self.tool))
+            self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
         else:
             self.status_label.config(
                 text=f"已安裝 v{installed_ver}(左側作業清單開啟)", foreground="#0a7")
+            self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
+
+    def _visible_versions(self) -> list[dict]:
+        return [v for v in self.tool.get("versions", []) if not v.get("yanked")]
+
+    def _add_version_btn(self) -> None:
+        """有兩個以上未作廢版本時,加「切換版本」按鈕。"""
+        if len(self._visible_versions()) > 1:
+            self._add_btn("切換版本", self._show_version_menu)
+
+    def _show_version_menu(self) -> None:
+        installed_ver = self.panel.installed_version(self.tool["id"])
+        menu = tk.Menu(self, tearoff=False)
+        for v in reversed(self._visible_versions()):   # 新版排上面
+            vnum = v.get("version", "")
+            label = f"v{vnum}" + ("  (目前)" if vnum == installed_ver else "")
+            menu.add_command(label=label, command=lambda vv=v: self._do_switch(vv))
+        menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+
+    def _do_switch(self, version_entry: dict) -> None:
+        vnum = version_entry.get("version", "")
+        if vnum == self.panel.installed_version(self.tool["id"]):
+            messagebox.showinfo("提示", f"目前已是 v{vnum}")
+            return
+        if not messagebox.askyesno(
+                "切換版本",
+                f"確定把「{self.tool['name']}」切換到 v{vnum}?\n會重新下載並安裝該版本。"):
+            return
+        self.panel.do_install({
+            "id": self.tool["id"],
+            "name": self.tool["name"],
+            "version": vnum,
+            "url": version_entry.get("url", ""),
+            "size_bytes": version_entry.get("size_bytes", 0),
+            "sha256": "",
+        })
 
     def _add_btn(self, text: str, cmd: Callable[[], None]) -> None:
         ttk.Button(self.button_frame, text=text, command=cmd, width=8).pack(side=tk.LEFT, padx=2)
@@ -858,6 +897,22 @@ class SettingsPanel(ttk.Frame):
 
         ttk.Label(self, text="設定", font=("Segoe UI", 14, "bold")).pack(
             anchor="w", pady=(0, 14))
+
+        # Launcher 版本
+        ver_box = ttk.LabelFrame(self, text="Launcher 版本", padding=14)
+        ver_box.pack(fill=tk.X, anchor="w", pady=(0, 14))
+        ttk.Label(ver_box, text=f"目前版本:v{config.APP_VERSION}").pack(anchor="w")
+        upd = self.app._launcher_update
+        if upd:
+            new_ver, _url = upd
+            ttk.Label(ver_box, text=f"有新版本:v{new_ver}",
+                      foreground="#d80").pack(anchor="w", pady=(4, 0))
+            ttk.Button(ver_box, text="更新 Launcher",
+                       command=self.app._do_launcher_update).pack(
+                           anchor="w", pady=(6, 0))
+        else:
+            ttk.Label(ver_box, text="已是最新版", foreground="#0a7").pack(
+                anchor="w", pady=(4, 0))
 
         general = ttk.LabelFrame(self, text="一般", padding=14)
         general.pack(fill=tk.X, anchor="w")
@@ -952,6 +1007,7 @@ def _fmt_size(n: float) -> str:
 
 def main() -> None:
     config.ensure_dirs()
+    self_update.cleanup_old()   # 清掉上次自更新殘留的舊 exe
 
     if not python_env.is_ready():
         _run_python_setup()

@@ -18,6 +18,7 @@
     ├── installer.py    # 下載 / 驗 SHA256 / 安裝 / 移除 / installed.json
     ├── launcher_run.py # 動態載入工具的 UI frame(嵌入右側內容區)
     ├── python_env.py   # 內嵌 Python 的下載與設定
+    ├── self_update.py  # Launcher 自我更新(偵測 / 下載 / 換版 / 重啟)
     ├── settings.py     # 使用者設定的讀寫
     └── main.py         # Tkinter UI(左右分割版面)
 ```
@@ -62,7 +63,9 @@ python run.py
 | `unlock_hash` | | 解鎖碼的 sha256;搭配 `hidden` 使用 |
 | `versions` | | 版本清單(供切換 / 回滾用),見下 |
 
-頂層另有 `master_unlock_hash`(共用解鎖密碼的 sha256)。
+頂層另有:
+- `master_unlock_hash` —— 共用解鎖密碼的 sha256
+- `launcher` —— Launcher 自我更新用,`{version, url}`(見「Launcher 自更新」)
 
 `versions` 是陣列,每筆 `{version, url, size_bytes, yanked?}` —— 列出工具的可用版本,
 讓 launcher 能切換 / 回滾到任一版。`yanked: true` 的版本不會出現在切換選單。
@@ -106,9 +109,9 @@ python set_unlock.py --master --remove       # 移除共用密碼
 
 ## 版本切換 / 回滾
 
-每個工具的 `versions` 清單列出可用版本。launcher 中對已安裝工具按右鍵 →「切換版本」
-即可裝到清單裡的任一版(回滾到舊版或滾回新版)。硬碟上仍只保留一個版本,
-切換 = 重新下載該版安裝。
+每個工具的 `versions` 清單列出可用版本。工具清單中,已安裝且有多版本的工具卡片上
+有「切換版本」按鈕,可裝到清單裡的任一版(回滾到舊版或滾回新版)。硬碟上仍只保留
+一個版本,切換 = 重新下載該版安裝。
 
 用 [manage_versions.py](manage_versions.py) 維護版本清單:
 
@@ -122,6 +125,35 @@ python manage_versions.py <tool_id> unyank <version>           # 取消作廢
 發新版時用 `add` 把版本加進清單;若某版有問題,用 `yank` 標記 ——
 作廢的版本不會出現在 launcher 的切換選單,但記錄與 GitHub Release 都保留。
 改完 `tools.json` 要 `git push`。
+
+## Launcher 自更新
+
+Launcher 自己也能更新。`tools.json` 頂層的 `launcher` 區塊填最新版號與 exe 網址:
+
+```json
+"launcher": {
+  "version": "1.1.0",
+  "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.0/MyToolsLauncher.exe"
+}
+```
+
+launcher 啟動 / 切到工具清單時,會比對 `tools.json` 的 `launcher.version` 與自身的
+`config.APP_VERSION`。有新版時,左側「設定」標示「(有新版)」,設定頁的「Launcher 版本」
+區塊出現「更新 Launcher」按鈕。
+
+按下更新:下載新 exe → 把執行中的 exe 改名成 `.old.exe` → 新 exe 就位 → 啟動新版、
+關閉舊版。下次啟動時清掉 `.old.exe`。整個過程只有打包成 exe 時有效,`python run.py`
+開發模式會略過。
+
+**發佈 Launcher 新版的流程:**
+
+1. 改 [app/config.py](app/config.py) 的 `APP_VERSION` 升版
+2. `build.bat` 打包
+3. 在 `tools-launcher` repo 建 Release,上傳 `MyToolsLauncher.exe`
+4. 更新 `tools.json` 的 `launcher` 區塊(version + url)後 `git push`
+
+注意:exe 所在資料夾需可寫(別放 `C:\Program Files`);只更新 exe 本身,
+不更新旁邊的 `python/` 內嵌環境。
 
 ## 已安裝工具的位置
 
@@ -178,9 +210,9 @@ pip install pyinstaller
 - [x] 自訂工具顯示名稱(預設用 catalog 名稱)
 - [x] 隱藏工具 + 解鎖碼機制(set_unlock.py 設定密碼;含共用密碼)
 - [x] 每次切換到「工具清單」自動重抓 catalog,即時反映最新版本
-- [x] 版本切換 / 回滾(右鍵切換版本;manage_versions.py 管理版本清單與作廢標記)
+- [x] 版本切換 / 回滾(工具卡片切換版本;manage_versions.py 管理版本清單與作廢標記)
+- [x] Launcher 自更新(偵測新版 → 下載 → 改名換版 → 自動重啟)
 
 ## 尚未實作(進階,參考設計文件 §5)
 
-- [ ] Launcher 自更新
 - [ ] 私有 repo 的 Token 設定 UI(真正的存取控制)
