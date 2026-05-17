@@ -1,7 +1,7 @@
 # MyTools Launcher
 
-依據 [工具啟動器_設計文件.md](工具啟動器_設計文件.md) 實作,並在開發過程中演進為
-「工具以 Python 原始碼發佈、由 launcher 動態載入並嵌入分頁」的架構。
+用一個 GUI launcher 集中管理多個小工具:從 GitHub 下載、安裝、更新,
+工具以 Python 原始碼發佈,由 launcher 動態載入並嵌入分頁執行。
 
 ## 結構
 
@@ -213,6 +213,6 @@ pip install pyinstaller
 - [x] 版本切換 / 回滾(工具卡片切換版本;manage_versions.py 管理版本清單與作廢標記)
 - [x] Launcher 自更新(偵測新版 → 下載 → 改名換版 → 自動重啟)
 
-## 尚未實作(進階,參考設計文件 §5)
+## 尚未實作
 
 - [ ] 私有 repo 的 Token 設定 UI(真正的存取控制)
