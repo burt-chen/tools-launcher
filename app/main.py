@@ -9,8 +9,14 @@ import hashlib
 import threading
 import traceback
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, messagebox, simpledialog
 from typing import Callable
+
+# 嵌入工具的全域字級基線。啟動器在任何面板建立前就統一設定,確保
+# 各工具字級一致且切換時不會跳動(早期問題:table-lookup 嵌入時才
+# 偷改全域命名字型,導致先開的工具切回來字被放大)。
+UI_FONT_SIZE = 12
 
 from . import catalog, config, installer, launcher_run, python_env, self_update, settings
 
@@ -118,14 +124,33 @@ class LauncherApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(f"{config.APP_NAME} — 工具啟動器")
-        self.geometry("1020x660")
+        self.geometry("1020x660")   # 還原(取消最大化)後的視窗大小
         self.minsize(800, 500)
+        try:
+            self.state("zoomed")    # 預設最大化開啟(Windows)
+        except tk.TclError:
+            pass
 
         style = ttk.Style(self)
         try:
             style.theme_use("vista")
         except tk.TclError:
             pass
+        # vista 原生頁簽選中/未選中差異極小,嵌入工具看不出在哪一頁。
+        # 全域主題由啟動器掌管,這裡提供「選中頁簽明顯」的基線,讓所有
+        # 嵌入工具的 ttk.Notebook 都受惠(expand 放大選中頁是跨主題都生效的做法)。
+        try:
+            style.configure("TNotebook.Tab", padding=[10, 4])
+            style.map(
+                "TNotebook.Tab",
+                expand=[("selected", [1, 1, 1, 0])],
+                foreground=[("selected", "#0a58ca")],
+            )
+        except tk.TclError:
+            pass
+        # 字型基線:在任何面板建立前統一全域字級。命名字型是整個 Tk
+        # 行程共用且會回溯套用到所有 widget,先設好就不會有「切換才放大」。
+        _apply_global_fonts(style, UI_FONT_SIZE)
 
         self.settings = settings.load()
         self.collapsed: set[str] = set()        # 折疊中的分區標題
@@ -134,7 +159,7 @@ class LauncherApp(tk.Tk):
         self._panels: dict[str, tk.Widget] = {}
         self._nav_items: list[NavItem] = []
         self._current_key: str | None = None
-        self._launcher_update: tuple[str, str] | None = None  # (version, url)
+        self._launcher_update: tuple[str, str, str] | None = None  # (version, url, sha256)
 
         self._build_layout()
         self._rebuild_nav()
@@ -377,7 +402,7 @@ class LauncherApp(tk.Tk):
     def _do_launcher_update(self) -> None:
         if not self._launcher_update:
             return
-        version, url = self._launcher_update
+        version, url, sha256 = self._launcher_update
         if not messagebox.askyesno(
                 "更新 Launcher",
                 f"確定更新 Launcher 到 v{version}?\n"
@@ -406,7 +431,7 @@ class LauncherApp(tk.Tk):
 
         def worker() -> None:
             try:
-                self_update.do_update(url, on_progress)
+                self_update.do_update(url, sha256, on_progress)
                 win.after(0, self.destroy)   # 新版已啟動,關閉本程式
             except Exception as e:
                 win.after(0, lambda: self._launcher_update_failed(win, e))
@@ -904,7 +929,7 @@ class SettingsPanel(ttk.Frame):
         ttk.Label(ver_box, text=f"目前版本:v{config.APP_VERSION}").pack(anchor="w")
         upd = self.app._launcher_update
         if upd:
-            new_ver, _url = upd
+            new_ver, _url, _sha = upd
             ttk.Label(ver_box, text=f"有新版本:v{new_ver}",
                       foreground="#d80").pack(anchor="w", pady=(4, 0))
             ttk.Button(ver_box, text="更新 Launcher",
@@ -995,6 +1020,39 @@ class SettingsPanel(ttk.Frame):
             ttk.Button(row, text="重新命名", width=9,
                        command=lambda nm=g["name"]: self.app.rename_group_dialog(nm)
                        ).pack(side=tk.RIGHT, padx=2)
+
+
+def _apply_global_fonts(style: ttk.Style, size: int) -> None:
+    """把全域命名字型 + ttk 樣式字型統一設成 size。
+
+    Tk 原生 widget 透過命名字型(TkDefaultFont 等)取字,ttk widget
+    則走 Style;兩邊都設才會整體一致。命名字型是整個 Tk 行程共用、
+    且改了會回溯套用到既有 widget,所以必須在建立任何面板前呼叫。
+    """
+    for name in (
+        "TkDefaultFont", "TkTextFont", "TkFixedFont", "TkMenuFont",
+        "TkHeadingFont", "TkCaptionFont", "TkSmallCaptionFont",
+        "TkIconFont", "TkTooltipFont",
+    ):
+        try:
+            tkfont.nametofont(name).configure(size=size)
+        except tk.TclError:
+            pass
+    for st in (
+        "TButton", "TLabel", "TEntry", "TCombobox", "TCheckbutton",
+        "TRadiobutton", "TMenubutton", "TNotebook", "TNotebook.Tab",
+        "TLabelframe", "TLabelframe.Label", "Treeview", "Treeview.Heading",
+        "TProgressbar",
+    ):
+        try:
+            style.configure(st, font=("TkDefaultFont", size))
+        except tk.TclError:
+            pass
+    # Treeview 列高需隨字級放大,否則文字會被裁切。
+    try:
+        style.configure("Treeview", rowheight=int(size * 2.0))
+    except tk.TclError:
+        pass
 
 
 def _fmt_size(n: float) -> str:
