@@ -2,11 +2,36 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tkinter as tk
 from pathlib import Path
 
 from . import installer
+
+
+def _purge_tool_modules(tool_dir: Path, tool_id: str) -> None:
+    """清掉上次載入此工具殘留在 sys.modules 的模組。
+
+    工具更新(重新下載解壓)後,若不清快取,main_frame 內
+    `import pack_gui` 等仍會命中舊模組 → 畫面還是舊版。
+    這裡移除 `_tool_{id}` 及所有檔案位於此工具目錄內的模組,
+    下次載入就會重新 import 到新碼。
+    """
+    prefix = os.path.normcase(str(tool_dir)) + os.sep
+    for name in list(sys.modules):
+        if name == f"_tool_{tool_id}":
+            del sys.modules[name]
+            continue
+        mod = sys.modules.get(name)
+        f = getattr(mod, "__file__", None)
+        if not f:
+            continue
+        try:
+            if os.path.normcase(str(Path(f).resolve())).startswith(prefix):
+                del sys.modules[name]
+        except Exception:
+            pass
 
 
 def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
@@ -30,10 +55,14 @@ def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
             "並實作 create_frame(parent) -> ttk.Frame 函數。"
         )
 
-    # 將工具目錄加入 sys.path，讓工具可以 import 自己的套件與模組
+    # 更新工具後要吃到新碼:先清掉上次殘留的模組快取
+    _purge_tool_modules(tool_dir.resolve(), tool_id)
+
+    # 將工具目錄放到 sys.path 最前,讓它 import 到自己(且優先於別的工具)
     tool_dir_str = str(tool_dir)
-    if tool_dir_str not in sys.path:
-        sys.path.insert(0, tool_dir_str)
+    if tool_dir_str in sys.path:
+        sys.path.remove(tool_dir_str)
+    sys.path.insert(0, tool_dir_str)
 
     spec = importlib.util.spec_from_file_location(f"_tool_{tool_id}", main_frame_path)
     mod = importlib.util.module_from_spec(spec)
