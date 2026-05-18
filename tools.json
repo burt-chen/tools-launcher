@@ -70,6 +70,26 @@
           "size_bytes": 12049
         }
       ]
+    },
+    {
+      "id": "tools-releases-pack",
+      "name": "releases打包工具",
+      "description": "releases打包工具產生tools",
+      "version": "1.0.0",
+      "size_bytes": 15104,
+      "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.0.0/tools-releases-pack-v1.0.0.zip",
+      "sha256": "fff6a57bff76b27d559ed73ac83300be22961752bd4a7a2a3b1d054a4c5d15d4",
+      "category": "程式開發工具",
+      "homepage": "https://github.com/burt-chen/tools-releases-pack",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.0.0/tools-releases-pack-v1.0.0.zip",
+          "size_bytes": 15104
+        }
+      ],
+      "hidden": true,
+      "unlock_hash": "20195541dc5dea5603773149612ec32f159351afae65c7ee53a915acd2d8b8e9"
     }
   ],
   "master_unlock_hash": "9fe77c3d4fa85f0512de0057111a83edd494c9f8c8ebf93c4ab47208bb2351d4"
