@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 import urllib.request
@@ -53,24 +54,28 @@ def _ver_tuple(v: str) -> tuple:
     return tuple(out)
 
 
-def available_update(catalog: dict) -> tuple[str, str] | None:
+def available_update(catalog: dict) -> tuple[str, str, str] | None:
     """檢查 catalog 的 launcher 區塊有無比目前新的版本。
 
-    回傳 (version, url);沒有或開發模式則回 None。
+    回傳 (version, url, sha256);sha256 未提供時為空字串。
+    沒有新版或開發模式則回 None。
     """
     if not is_frozen():
         return None
     info = (catalog or {}).get("launcher") or {}
     version = str(info.get("version", "")).strip()
     url = str(info.get("url", "")).strip()
+    sha256 = str(info.get("sha256", "")).strip()
     if version and url and _ver_tuple(version) > _ver_tuple(config.APP_VERSION):
-        return (version, url)
+        return (version, url, sha256)
     return None
 
 
-def _download(url: str, dest: Path, on_progress=None) -> None:
+def _download(url: str, dest: Path, on_progress=None) -> str:
+    """下載到 dest,回傳內容的 SHA256 hexdigest。"""
     req = urllib.request.Request(
         url, headers={"User-Agent": f"{config.APP_NAME}-Launcher"})
+    sha = hashlib.sha256()
     with urllib.request.urlopen(req, timeout=config.HTTP_TIMEOUT) as r, open(dest, "wb") as f:
         total = 0
         cl = r.headers.get("Content-Length")
@@ -82,13 +87,15 @@ def _download(url: str, dest: Path, on_progress=None) -> None:
             if not chunk:
                 break
             f.write(chunk)
+            sha.update(chunk)
             downloaded += len(chunk)
             if on_progress:
                 on_progress(downloaded, total)
+    return sha.hexdigest()
 
 
-def do_update(url: str, on_progress=None) -> None:
-    """下載新 exe → 改名換版 → 啟動新版。
+def do_update(url: str, sha256: str = "", on_progress=None) -> None:
+    """下載新 exe → 驗 SHA256(若有提供)→ 改名換版 → 啟動新版。
 
     成功回傳後,呼叫端應立即關閉目前程式。
     """
@@ -97,7 +104,12 @@ def do_update(url: str, on_progress=None) -> None:
     # 1. 下載新 exe 到 .new.exe
     if new.exists():
         new.unlink()
-    _download(url, new, on_progress)
+    actual = _download(url, new, on_progress)
+
+    # 1b. 驗 SHA256(catalog 有提供才驗);不符則刪掉下載檔並中止
+    if sha256 and actual.lower() != sha256.lower():
+        new.unlink(missing_ok=True)
+        raise ValueError(f"SHA256 不符:預期 {sha256},實際 {actual}")
 
     # 2. 清掉殘留的 .old.exe(否則步驟 3 改名會撞名)
     if old.exists():

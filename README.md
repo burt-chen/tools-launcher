@@ -133,7 +133,8 @@ Launcher 自己也能更新。`tools.json` 頂層的 `launcher` 區塊填最新�
 ```json
 "launcher": {
   "version": "1.1.0",
-  "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.0/MyToolsLauncher.exe"
+  "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.0/MyToolsLauncher.exe",
+  "sha256": "（選填）新 exe 的 SHA256,有填才驗;不符會中止更新"
 }
 ```
 
@@ -141,8 +142,9 @@ launcher 啟動 / 切到工具清單時,會比對 `tools.json` 的 `launcher.ver
 `config.APP_VERSION`。有新版時,左側「設定」標示「(有新版)」,設定頁的「Launcher 版本」
 區塊出現「更新 Launcher」按鈕。
 
-按下更新:下載新 exe → 把執行中的 exe 改名成 `.old.exe` → 新 exe 就位 → 啟動新版、
-關閉舊版。下次啟動時清掉 `.old.exe`。整個過程只有打包成 exe 時有效,`python run.py`
+按下更新:下載新 exe → 驗 SHA256(`launcher.sha256` 有填才驗,不符則刪掉下載檔並
+中止)→ 把執行中的 exe 改名成 `.old.exe` → 新 exe 就位 → 啟動新版、關閉舊版。
+下次啟動時清掉 `.old.exe`。整個過程只有打包成 exe 時有效,`python run.py`
 開發模式會略過。
 
 **發佈 Launcher 新版的流程:**
@@ -150,7 +152,9 @@ launcher 啟動 / 切到工具清單時,會比對 `tools.json` 的 `launcher.ver
 1. 改 [app/config.py](app/config.py) 的 `APP_VERSION` 升版
 2. `build.bat` 打包
 3. 在 `tools-launcher` repo 建 Release,上傳 `MyToolsLauncher.exe`
-4. 更新 `tools.json` 的 `launcher` 區塊(version + url)後 `git push`
+4. 更新 `tools.json` 的 `launcher` 區塊(version + url;建議一併填 `sha256`,
+   可用 PowerShell `(Get-FileHash MyToolsLauncher.exe -Algorithm SHA256).Hash`)
+   後 `git push`
 
 注意:exe 所在資料夾需可寫(別放 `C:\Program Files`);只更新 exe 本身,
 不更新旁邊的 `python/` 內嵌環境。
