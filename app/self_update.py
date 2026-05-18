@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import sys
 import urllib.request
@@ -126,4 +127,18 @@ def do_update(url: str, sha256: str = "", on_progress=None) -> None:
         raise
 
     # 5. 啟動新版
-    subprocess.Popen([str(exe)], cwd=str(exe.parent))
+    #    必須清掉 PyInstaller onefile 的環境變數,否則新 exe 會沿用
+    #    舊行程的 _MEIxxxx 暫存夾(舊行程一結束就被清掉),導致新行程
+    #    之後延遲 import 時找不到 base_library.zip。並讓新行程獨立。
+    env = {
+        k: v for k, v in os.environ.items()
+        if k != "_MEIPASS2" and not k.startswith("_PYI")
+    }
+    flags = 0
+    if sys.platform == "win32":
+        flags = (getattr(subprocess, "DETACHED_PROCESS", 0)
+                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    subprocess.Popen(
+        [str(exe)], cwd=str(exe.parent), env=env,
+        close_fds=True, creationflags=flags,
+    )
