@@ -41,10 +41,10 @@
       "id": "table-lookup",
       "name": "資料對照彙整工具",
       "description": "載入兩份資料表，用 key 清單篩選主表並自訂輸出欄位，支援 xlsx / csv / json",
-      "version": "1.0.0",
-      "size_bytes": 23009,
-      "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.0.0/table-lookup-v1.0.0.zip",
-      "sha256": "e9af3f9c0f5037ba444d97579b748d70c17e7717c0e146ed7df3dec904b3c62d",
+      "version": "1.3.0",
+      "size_bytes": 23935,
+      "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.3.0/table-lookup-v1.3.0.zip",
+      "sha256": "1bb2e0e123a41fe2a3964e44a7af0e8c96503f9eee285acd873e92fc169445e4",
       "category": "資料處理",
       "homepage": "https://github.com/burt-chen/table-lookup",
       "versions": [
@@ -52,6 +52,11 @@
           "version": "1.0.0",
           "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.0.0/table-lookup-v1.0.0.zip",
           "size_bytes": 23009
+        },
+        {
+          "version": "1.3.0",
+          "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.3.0/table-lookup-v1.3.0.zip",
+          "size_bytes": 23935
         }
       ]
     },
