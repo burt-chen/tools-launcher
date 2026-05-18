@@ -263,6 +263,23 @@ class App:
         self.tree.item(tid, values=v, tags=(tag,))
 
     def _check_all(self):
+        # 每次都重讀磁碟上的 tools.json,反映外部手動編輯(刪除/改版本)
+        try:
+            cat = self._catalog()
+        except Exception as e:
+            messagebox.showerror(
+                "tools.json 讀取失敗",
+                f"{e}\n\n（tools.json 可能手動編輯後格式不正確,請先修好）")
+            return
+        self.cat_ver = {t.get("id"): t.get("version", "")
+                        for t in cat.get("tools", [])}
+        for w in self.watch:  # 同步更新「catalog 版本」欄
+            tid = w.get("id", "")
+            if self.tree.exists(tid):
+                vv = list(self.tree.item(tid, "values"))
+                vv[2] = self.cat_ver.get(tid, "（不在 catalog）")
+                self.tree.item(tid, values=vv)
+
         self.fetched.clear()
         for w in self.watch:
             tid = w["id"]
