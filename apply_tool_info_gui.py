@@ -22,7 +22,7 @@ import tkinter as tk
 import urllib.request
 from datetime import date
 from pathlib import Path
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 _DIR = Path(__file__).resolve().parent
 TOOLS_JSON = _DIR / "tools.json"
@@ -93,6 +93,56 @@ def fetch_tool_info(owner: str, repo: str, timeout: int = 15) -> dict:
     req = urllib.request.Request(url, headers={"User-Agent": "tools-launcher-sync"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+class WatchDialog(tk.Toplevel):
+    """新增 / 編輯一筆工具（id / GitHub 帳號 / repo），所有欄位一次顯示。"""
+
+    FIELDS = [
+        ("id", "工具 id", "與 tools.json 的 id 相同"),
+        ("owner", "GitHub 帳號", "owner,例:burt-chen"),
+        ("repo", "GitHub repo", "repo 名,例:tools-releases-pack"),
+    ]
+
+    def __init__(self, parent, existing: dict | None = None):
+        super().__init__(parent)
+        self.title("編輯工具" if existing else "新增工具")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.result: dict | None = None
+        self.vars = {k: tk.StringVar(value=(existing or {}).get(k, ""))
+                     for k, _, _ in self.FIELDS}
+
+        frm = ttk.Frame(self, padding=14)
+        frm.grid(sticky="nsew")
+        frm.columnconfigure(1, weight=1)
+        r = 0
+        for key, label, hint in self.FIELDS:
+            ttk.Label(frm, text=label).grid(row=r, column=0, sticky="w", padx=6, pady=4)
+            e = ttk.Entry(frm, textvariable=self.vars[key], width=36)
+            e.grid(row=r, column=1, sticky="ew", padx=6, pady=4)
+            if key == "id" and existing:
+                e.configure(state="disabled")
+            ttk.Label(frm, text=hint, foreground="#888").grid(
+                row=r + 1, column=1, sticky="w", padx=6)
+            r += 2
+
+        bar = ttk.Frame(frm)
+        bar.grid(row=r, column=0, columnspan=2, sticky="e", pady=(12, 0))
+        ttk.Button(bar, text="取消", command=self.destroy).pack(side="right", padx=4)
+        ttk.Button(bar, text="確定", command=self._ok).pack(side="right", padx=4)
+
+        self.grab_set()
+        self.wait_window(self)
+
+    def _ok(self):
+        vals = {k: self.vars[k].get().strip() for k, _, _ in self.FIELDS}
+        for key, label, _ in self.FIELDS:
+            if not vals[key]:
+                messagebox.showwarning("缺少資訊", f"「{label}」必填。", parent=self)
+                return
+        self.result = vals
+        self.destroy()
 
 
 class App:
@@ -188,16 +238,12 @@ class App:
                 self.cat_ver.get(tid, "（不在 catalog）"), "", "未檢查"))
 
     def _add(self):
-        tid = simpledialog.askstring("新增工具", "工具 id：", parent=self.root)
-        if not tid:
+        dlg = WatchDialog(self.root)
+        if not dlg.result:
             return
-        owner = simpledialog.askstring("新增工具", "GitHub 帳號(owner)：", parent=self.root)
-        repo = simpledialog.askstring("新增工具", "GitHub repo：", parent=self.root)
-        if not owner or not repo:
-            return
-        self.watch = [w for w in self._load_watch() if w.get("id") != tid]
-        self.watch.append({"id": tid.strip(), "owner": owner.strip(),
-                           "repo": repo.strip()})
+        v = dlg.result
+        self.watch = [w for w in self._load_watch() if w.get("id") != v["id"]]
+        self.watch.append({"id": v["id"], "owner": v["owner"], "repo": v["repo"]})
         self._save_watch(self.watch)
         self._reload()
 
