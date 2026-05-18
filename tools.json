@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-05-16",
+  "updated_at": "2026-05-18",
   "launcher": {
     "version": "1.0.0",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.0.0/MyToolsLauncher.exe"
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "id": "salary",
+      "id": "gf-salary",
       "name": "薪資單批處理工具",
       "description": "員工清單管理、PDF 薪資單批量重命名、批次寄送薪資單郵件",
       "version": "1.0.1",

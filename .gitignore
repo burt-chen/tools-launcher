@@ -6,3 +6,5 @@ dist/
 *.spec
 python/
 unlock_records.json
+tools.json.bak
+watch_tools.json
