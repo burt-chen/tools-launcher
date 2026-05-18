@@ -1,30 +1,43 @@
-"""把打包工具產生的 tool_info.json 套用進 tools.json（GUI）。
+"""把各工具 Release 上的 tool_info.json 一鍵併進 tools.json（GUI）。
 
-只用標準庫（tkinter）。放在 tools-launcher repo（小工具管理）根目錄，
+只用標準庫（tkinter + urllib）。放在 tools-launcher repo（小工具管理）根目錄，
 讀寫同資料夾的 tools.json —— 跟 manage_versions.py / set_unlock.py 一致。
 
-合併規則（聯集保留）：
-- 該工具已存在：更新 top-level（name/description/version/size_bytes/url/
-  sha256/category/homepage，及 hidden/unlock_hash 依 tool_info 為準）；
-  versions 做聯集 —— 既有版本與其 yanked 標記保留，同版本更新 url/size，
-  tool_info 的新版本沒有的才追加。
-- 該工具不存在：整筆新增。
-寫檔前先備份 tools.json → tools.json.bak。改完要自行 git push 才生效。
+流程：
+- 維護一份工具清單（id / GitHub 帳號 / repo），存 watch_tools.json。
+- 「檢查全部」：對每個工具抓
+  https://github.com/<owner>/<repo>/releases/latest/download/tool_info.json
+  比對 catalog 現有版本，標出 新工具 / 可更新 / 已最新 / 抓取失敗。
+- 勾選要套用的 → 併進 tools.json（聯集保留 versions，含 sha256/hidden）。
+寫檔前自動備份 tools.json.bak。改完要自行 git push 才生效。
+
+同事只要把 zip 和 tool_info.json 上傳到自己帳號的 Release，不必傳檔給你。
+前提：同事的 repo / Release 必須 public。
 """
 from __future__ import annotations
 
 import json
 import shutil
 import tkinter as tk
+import urllib.request
 from datetime import date
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
-TOOLS_JSON = Path(__file__).resolve().parent / "tools.json"
+_DIR = Path(__file__).resolve().parent
+TOOLS_JSON = _DIR / "tools.json"
+WATCH_JSON = _DIR / "watch_tools.json"
 
-# tool_info 內代表「最新版」的 top-level 欄位
 TOP_FIELDS = ("name", "description", "version", "size_bytes", "url",
               "sha256", "category", "homepage")
+LATEST_URL = "https://github.com/{owner}/{repo}/releases/latest/download/tool_info.json"
+
+
+def _vkey(v) -> tuple:
+    try:
+        return tuple(int(x) for x in str(v).split("."))
+    except Exception:
+        return (0,)
 
 
 def merge_into_catalog(catalog: dict, info: dict) -> tuple[dict, list[str]]:
@@ -38,29 +51,25 @@ def merge_into_catalog(catalog: dict, info: dict) -> tuple[dict, list[str]]:
     log: list[str] = []
 
     if cur is None:
-        tools.append(json.loads(json.dumps(info)))  # 深拷貝整筆新增
-        log.append(f"➕ 新增工具「{tid}」")
-        log.append(f"   版本：{', '.join(v['version'] for v in info['versions'])}")
+        tools.append(json.loads(json.dumps(info)))
+        log.append(f"➕ 新增工具「{tid}」 版本 "
+                   f"{', '.join(v['version'] for v in info['versions'])}")
     else:
-        log.append(f"✎ 更新既有工具「{tid}」")
+        log.append(f"✎ 更新「{tid}」")
         for f in TOP_FIELDS:
             if f in info and cur.get(f) != info.get(f):
                 log.append(f"   {f}: {cur.get(f)!r} → {info.get(f)!r}")
                 cur[f] = info[f]
-
-        # hidden / unlock_hash 依 tool_info 為準（開放工具會移除這兩鍵）
         if info.get("hidden"):
             if not cur.get("hidden"):
-                log.append("   設為隱藏工具（hidden=true）")
+                log.append("   設為隱藏工具")
             cur["hidden"] = True
             if info.get("unlock_hash"):
                 cur["unlock_hash"] = info["unlock_hash"]
         else:
             if cur.pop("hidden", None) is not None:
-                log.append("   改為開放工具（移除 hidden）")
+                log.append("   改為開放工具")
             cur.pop("unlock_hash", None)
-
-        # versions 聯集：保留既有（含 yanked），同版本更新，新版本追加
         cur_vers = cur.setdefault("versions", [])
         by_ver = {v.get("version"): v for v in cur_vers}
         for nv in info["versions"]:
@@ -68,66 +77,214 @@ def merge_into_catalog(catalog: dict, info: dict) -> tuple[dict, list[str]]:
             if ev is None:
                 cur_vers.append(dict(nv))
                 log.append(f"   + 新版本 v{nv['version']}")
-            else:
-                if ev.get("url") != nv.get("url") or \
-                        ev.get("size_bytes") != nv.get("size_bytes"):
-                    ev["url"] = nv.get("url", ev.get("url"))
-                    ev["size_bytes"] = nv.get("size_bytes", ev.get("size_bytes"))
-                    log.append(f"   ~ 更新 v{nv['version']}（url/size）"
-                               + ("（仍標記作廢）" if ev.get("yanked") else ""))
+            elif ev.get("url") != nv.get("url") or \
+                    ev.get("size_bytes") != nv.get("size_bytes"):
+                ev["url"] = nv.get("url", ev.get("url"))
+                ev["size_bytes"] = nv.get("size_bytes", ev.get("size_bytes"))
+                log.append(f"   ~ 更新 v{nv['version']}"
+                           + ("（仍標記作廢）" if ev.get("yanked") else ""))
 
     catalog["updated_at"] = date.today().isoformat()
     return catalog, log
 
 
+def fetch_tool_info(owner: str, repo: str, timeout: int = 15) -> dict:
+    url = LATEST_URL.format(owner=owner.strip(), repo=repo.strip())
+    req = urllib.request.Request(url, headers={"User-Agent": "tools-launcher-sync"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
 class App:
     def __init__(self, root: tk.Tk):
-        root.title("套用 tool_info → tools.json")
-        root.geometry("680x520")
-        root.minsize(600, 460)
-        self.info: dict | None = None
-        self.src = tk.StringVar()
+        self.root = root
+        root.title("更新 tools.json（從各工具 Release）")
+        root.geometry("860x600")
+        root.minsize(760, 520)
+        self.fetched: dict[str, dict] = {}   # id -> tool_info
 
-        frm = ttk.Frame(root, padding=12)
+        frm = ttk.Frame(root, padding=10)
         frm.pack(fill="both", expand=True)
-        frm.columnconfigure(1, weight=1)
+        frm.rowconfigure(1, weight=1)
+        frm.columnconfigure(0, weight=1)
 
-        ttk.Label(frm, text="tool_info.json").grid(row=0, column=0, sticky="w", padx=6, pady=6)
-        ttk.Entry(frm, textvariable=self.src, state="readonly").grid(
-            row=0, column=1, sticky="ew", padx=6, pady=6)
-        ttk.Button(frm, text="選擇…", command=self._pick).grid(row=0, column=2, padx=6, pady=6)
+        ttk.Label(frm, text=f"目標 catalog：{TOOLS_JSON}",
+                  foreground="#888").grid(row=0, column=0, columnspan=2, sticky="w")
 
-        ttk.Label(frm, text=f"目標：{TOOLS_JSON}", foreground="#888").grid(
-            row=1, column=0, columnspan=3, sticky="w", padx=6)
+        cols = ("id", "gh", "cat_ver", "rel_ver", "status")
+        tt = {"id": "工具 id", "gh": "GitHub 帳號/repo",
+              "cat_ver": "catalog 版本", "rel_ver": "Release 最新",
+              "status": "狀態"}
+        w = {"id": 150, "gh": 230, "cat_ver": 110, "rel_ver": 110, "status": 170}
+        self.tree = ttk.Treeview(frm, columns=cols, show="headings",
+                                 selectmode="extended", height=12)
+        for c in cols:
+            self.tree.heading(c, text=tt[c])
+            self.tree.column(c, width=w[c], anchor="w")
+        self.tree.grid(row=1, column=0, sticky="nsew", pady=8)
+        sb = ttk.Scrollbar(frm, orient="vertical", command=self.tree.yview)
+        sb.grid(row=1, column=1, sticky="ns", pady=8)
+        self.tree.configure(yscrollcommand=sb.set)
+        self.tree.tag_configure("new", foreground="#1a6f1a")
+        self.tree.tag_configure("upd", foreground="#b9770e")
+        self.tree.tag_configure("err", foreground="#c0392b")
+        self.tree.tag_configure("same", foreground="#888")
 
-        self.txt = tk.Text(frm, height=18, wrap="word")
-        self.txt.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=6, pady=8)
-        self.txt.tag_config("warn", foreground="#c0392b")
+        bar1 = ttk.Frame(frm)
+        bar1.grid(row=2, column=0, columnspan=2, sticky="ew")
+        ttk.Button(bar1, text="新增工具", command=self._add).pack(side="left")
+        ttk.Button(bar1, text="移除", command=self._remove).pack(side="left", padx=6)
+        ttk.Button(bar1, text="檢查全部", command=self._check_all).pack(side="left", padx=6)
+        ttk.Button(bar1, text="從本機檔套用…",
+                   command=self._apply_file).pack(side="left", padx=6)
+
+        self.txt = tk.Text(frm, height=9, wrap="word")
+        self.txt.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=8)
+        frm.rowconfigure(3, weight=1)
         self.txt.tag_config("ok", foreground="#1a6f1a")
         self.txt.tag_config("muted", foreground="#888")
         self.txt.configure(state="disabled")
-        frm.rowconfigure(2, weight=1)
 
-        bar = ttk.Frame(frm)
-        bar.grid(row=3, column=0, columnspan=3, sticky="ew", padx=6)
-        self.btn = ttk.Button(bar, text="套用並寫入 tools.json",
-                              command=self._apply, state="disabled")
-        self.btn.pack(side="right")
-        ttk.Label(bar, text="寫入前會自動備份 tools.json.bak",
+        bar2 = ttk.Frame(frm)
+        bar2.grid(row=4, column=0, columnspan=2, sticky="ew")
+        ttk.Label(bar2, text="勾選(可多選)列後套用;不選則套用全部「新/可更新」",
                   foreground="#888").pack(side="left")
+        ttk.Button(bar2, text="套用 → 寫入 tools.json",
+                   command=self._apply_selected).pack(side="right")
 
         if not TOOLS_JSON.exists():
-            self._set([(f"⚠ 找不到 {TOOLS_JSON}", "warn"),
-                       ("請把此程式放在 tools-launcher repo（小工具管理）根目錄。", "muted")])
+            messagebox.showerror("找不到 tools.json",
+                                 f"{TOOLS_JSON}\n請把此程式放在 tools-launcher repo 根目錄。")
+        self._reload()
 
-    def _set(self, lines):
-        self.txt.configure(state="normal")
-        self.txt.delete("1.0", "end")
-        for s, tag in lines:
-            self.txt.insert("end", s + "\n", tag)
-        self.txt.configure(state="disabled")
+    # ---- watch list ----
 
-    def _pick(self):
+    def _load_watch(self) -> list:
+        if WATCH_JSON.exists():
+            try:
+                return json.loads(WATCH_JSON.read_text(encoding="utf-8")).get("tools", [])
+            except Exception:
+                return []
+        return []
+
+    def _save_watch(self, tools: list):
+        WATCH_JSON.write_text(
+            json.dumps({"tools": tools}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+
+    def _catalog(self) -> dict:
+        return json.loads(TOOLS_JSON.read_text(encoding="utf-8"))
+
+    def _reload(self):
+        self.watch = self._load_watch()
+        cat = self._catalog()
+        self.cat_ver = {t.get("id"): t.get("version", "") for t in cat.get("tools", [])}
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        for w in self.watch:
+            tid = w.get("id", "")
+            self.tree.insert("", "end", iid=tid, values=(
+                tid, f'{w.get("owner","")}/{w.get("repo","")}',
+                self.cat_ver.get(tid, "（不在 catalog）"), "", "未檢查"))
+
+    def _add(self):
+        tid = simpledialog.askstring("新增工具", "工具 id：", parent=self.root)
+        if not tid:
+            return
+        owner = simpledialog.askstring("新增工具", "GitHub 帳號(owner)：", parent=self.root)
+        repo = simpledialog.askstring("新增工具", "GitHub repo：", parent=self.root)
+        if not owner or not repo:
+            return
+        self.watch = [w for w in self._load_watch() if w.get("id") != tid]
+        self.watch.append({"id": tid.strip(), "owner": owner.strip(),
+                           "repo": repo.strip()})
+        self._save_watch(self.watch)
+        self._reload()
+
+    def _remove(self):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        ids = set(sel)
+        self._save_watch([w for w in self._load_watch() if w.get("id") not in ids])
+        self._reload()
+
+    # ---- check / apply ----
+
+    def _set_status(self, tid, rel_ver, status, tag):
+        v = list(self.tree.item(tid, "values"))
+        v[3], v[4] = rel_ver, status
+        self.tree.item(tid, values=v, tags=(tag,))
+
+    def _check_all(self):
+        self.fetched.clear()
+        for w in self.watch:
+            tid = w["id"]
+            self._set_status(tid, "", "檢查中…", "")
+            self.root.update_idletasks()
+            try:
+                info = fetch_tool_info(w["owner"], w["repo"])
+            except Exception as e:
+                self._set_status(tid, "", f"抓取失敗：{type(e).__name__}", "err")
+                continue
+            if info.get("id") and info["id"] != tid:
+                self._set_status(tid, info.get("version", ""),
+                                 f"id 不符（檔內為 {info['id']}）", "err")
+                continue
+            self.fetched[tid] = info
+            rv = info.get("version", "")
+            cv = self.cat_ver.get(tid)
+            if cv is None:
+                self._set_status(tid, rv, "新工具(可新增)", "new")
+            elif _vkey(rv) > _vkey(cv):
+                self._set_status(tid, rv, f"可更新（{cv}→{rv}）", "upd")
+            elif _vkey(rv) == _vkey(cv):
+                self._set_status(tid, rv, "已最新", "same")
+            else:
+                self._set_status(tid, rv, f"遠端較舊（{rv}<{cv}）", "err")
+
+    def _targets(self) -> list[str]:
+        sel = [i for i in self.tree.selection() if i in self.fetched]
+        if sel:
+            return sel
+        # 沒選 → 全部「新工具 / 可更新」
+        out = []
+        for tid, info in self.fetched.items():
+            cv = self.cat_ver.get(tid)
+            if cv is None or _vkey(info.get("version", "")) > _vkey(cv):
+                out.append(tid)
+        return out
+
+    def _apply_selected(self):
+        targets = self._targets()
+        if not targets:
+            messagebox.showinfo("沒有可套用的",
+                                "先「檢查全部」,再選列或讓它自動挑「新/可更新」。")
+            return
+        if not messagebox.askyesno(
+                "確認", f"要把這 {len(targets)} 個工具套進 tools.json?\n"
+                        + "、".join(targets)):
+            return
+        try:
+            shutil.copy2(TOOLS_JSON, TOOLS_JSON.with_suffix(".json.bak"))
+            cat = self._catalog()
+            alllog = []
+            for tid in targets:
+                _, log = merge_into_catalog(cat, self.fetched[tid])
+                alllog += log
+            TOOLS_JSON.write_text(
+                json.dumps(cat, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+        except Exception as e:
+            messagebox.showerror("寫入失敗", str(e))
+            return
+        self._show(["✓ 已寫入 tools.json（備份 tools.json.bak）", ""] + alllog
+                   + ["", "記得 push 才生效：",
+                      '  git add tools.json && git commit -m "更新工具" && git push'])
+        self._reload()
+        messagebox.showinfo("完成", "tools.json 已更新,記得 git commit & push。")
+
+    def _apply_file(self):
         p = filedialog.askopenfilename(
             title="選擇 tool_info.json",
             filetypes=[("tool_info / JSON", "*.json"), ("所有檔案", "*.*")])
@@ -135,46 +292,27 @@ class App:
             return
         try:
             info = json.loads(Path(p).read_text(encoding="utf-8"))
-            catalog = json.loads(TOOLS_JSON.read_text(encoding="utf-8"))
-            preview = json.loads(json.dumps(catalog))  # 在副本上預演
-            _, log = merge_into_catalog(preview, info)
-        except Exception as e:
-            self.info = None
-            self.btn.configure(state="disabled")
-            self._set([("讀取 / 預覽失敗：", "warn"), (str(e), "warn")])
-            return
-        self.src.set(p)
-        self.info = info
-        self.btn.configure(state="normal")
-        lines = [("預覽（尚未寫入,按下方按鈕才會改檔）", "muted"), ("", "muted")]
-        lines += [(x, "ok" if x.startswith(("➕", "✎")) else "") for x in log]
-        self._set(lines)
-
-    def _apply(self):
-        if not self.info:
-            return
-        if not messagebox.askyesno("確認", "確定把這份 tool_info 套用進 tools.json?"):
-            return
-        try:
             shutil.copy2(TOOLS_JSON, TOOLS_JSON.with_suffix(".json.bak"))
-            catalog = json.loads(TOOLS_JSON.read_text(encoding="utf-8"))
-            catalog, log = merge_into_catalog(catalog, self.info)
+            cat = self._catalog()
+            _, log = merge_into_catalog(cat, info)
             TOOLS_JSON.write_text(
-                json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
+                json.dumps(cat, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8")
         except Exception as e:
-            messagebox.showerror("寫入失敗", str(e))
+            messagebox.showerror("失敗", str(e))
             return
-        self._set(
-            [("✓ 已寫入 tools.json（備份在 tools.json.bak）", "ok"), ("", "muted")]
-            + [(x, "") for x in log]
-            + [("", "muted"),
-               ("記得 push 才會對使用者生效：", "muted"),
-               ('  git add tools.json && git commit -m "更新工具" && git push',
-                "muted")])
-        self.btn.configure(state="disabled")
-        messagebox.showinfo(
-            "完成", "tools.json 已更新。\n記得 git commit & push tools-launcher repo。")
+        self._show(["✓ 已從本機檔寫入（備份 tools.json.bak）", ""] + log
+                   + ["", "記得 git commit & push。"])
+        self._reload()
+
+    def _show(self, lines):
+        self.txt.configure(state="normal")
+        self.txt.delete("1.0", "end")
+        for s in lines:
+            self.txt.insert("end", s + "\n",
+                            "ok" if s.startswith(("✓", "➕", "✎")) else
+                            ("muted" if s.startswith(" ") or not s else ""))
+        self.txt.configure(state="disabled")
 
 
 def main():
