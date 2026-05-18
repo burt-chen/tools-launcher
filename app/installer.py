@@ -54,12 +54,13 @@ def install(
     config.ensure_dirs()
     tool_id = tool["id"]
     dest_dir = config.TOOLS_DIR / tool_id
+    staging = config.TOOLS_DIR / f"_{tool_id}_new"
+    tmp_zip = config.TOOLS_DIR / f"_{tool_id}_download.zip"
 
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
-    tmp_zip = dest_dir / "_download.zip"
+    if staging.exists():
+        shutil.rmtree(staging, ignore_errors=True)
+    tmp_zip.unlink(missing_ok=True)
+    staging.mkdir(parents=True, exist_ok=True)
 
     sha = hashlib.sha256()
     total = int(tool.get("size_bytes") or 0)
@@ -87,24 +88,49 @@ def install(
                 if on_progress:
                     on_progress(downloaded, total)
     except BaseException:
-        shutil.rmtree(dest_dir, ignore_errors=True)
+        shutil.rmtree(staging, ignore_errors=True)
+        tmp_zip.unlink(missing_ok=True)
         raise
 
     expected = tool.get("sha256")
     if expected:
         actual = sha.hexdigest()
         if actual.lower() != expected.lower():
-            shutil.rmtree(dest_dir, ignore_errors=True)
+            shutil.rmtree(staging, ignore_errors=True)
+            tmp_zip.unlink(missing_ok=True)
             raise ValueError(f"SHA256 不符:預期 {expected},實際 {actual}")
 
     try:
         with zipfile.ZipFile(tmp_zip) as zf:
-            zf.extractall(dest_dir)
+            shipped = {
+                n.replace("\\", "/").rstrip("/")
+                for n in zf.namelist() if not n.endswith("/")
+            }
+            zf.extractall(staging)
     except zipfile.BadZipFile:
-        shutil.rmtree(dest_dir, ignore_errors=True)
+        shutil.rmtree(staging, ignore_errors=True)
+        tmp_zip.unlink(missing_ok=True)
         raise ValueError("下載的檔案不是有效的 zip 檔")
     finally:
         tmp_zip.unlink(missing_ok=True)
+
+    # 保留使用者資料:舊安裝目錄裡「新版 zip 沒有的檔」(工具自己產生的
+    # 設定 / 新增資料)搬進新版,避免更新 / 切換版本 / 降版時被清掉。
+    if dest_dir.exists():
+        for old in dest_dir.rglob("*"):
+            if not old.is_file():
+                continue
+            rel = old.relative_to(dest_dir).as_posix()
+            if rel in shipped or rel == "_download.zip":
+                continue
+            target = staging / rel
+            if target.exists():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(old, target)
+        shutil.rmtree(dest_dir, ignore_errors=True)
+
+    shutil.move(str(staging), str(dest_dir))
 
     _pip_install_if_needed(dest_dir)
 
