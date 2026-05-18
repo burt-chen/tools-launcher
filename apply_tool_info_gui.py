@@ -190,6 +190,10 @@ class App:
                    command=self._apply_selected).pack(side="left", padx=6)
         ttk.Button(bar1, text="本機檔更新tools",
                    command=self._apply_file).pack(side="right")
+        ttk.Button(bar1, text="匯入清單",
+                   command=self._import_watch).pack(side="right", padx=6)
+        ttk.Button(bar1, text="匯出清單",
+                   command=self._export_watch).pack(side="right")
 
         ttk.Label(frm, text="勾選(可多選)列後按「更新tools」;不選則更新全部「新/可更新」",
                   foreground="#888").grid(row=3, column=0, columnspan=2,
@@ -221,6 +225,69 @@ class App:
         WATCH_JSON.write_text(
             json.dumps({"tools": tools}, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8")
+
+    def _export_watch(self):
+        tools = self._load_watch()
+        if not tools:
+            messagebox.showinfo("沒有資料", "工具清單是空的,沒東西可匯出。")
+            return
+        dest = filedialog.asksaveasfilename(
+            title="匯出工具清單", defaultextension=".json",
+            initialfile="watch_tools_backup.json",
+            filetypes=[("JSON", "*.json")])
+        if not dest:
+            return
+        try:
+            Path(dest).write_text(
+                json.dumps({"tools": tools}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+        except Exception as e:
+            messagebox.showerror("匯出失敗", str(e))
+            return
+        messagebox.showinfo("匯出完成", f"已匯出 {len(tools)} 個工具到:\n{dest}")
+
+    def _import_watch(self):
+        src = filedialog.askopenfilename(
+            title="匯入工具清單",
+            filetypes=[("JSON", "*.json"), ("所有檔案", "*.*")])
+        if not src:
+            return
+        try:
+            incoming = json.loads(Path(src).read_text(encoding="utf-8"))
+            items = incoming.get("tools") if isinstance(incoming, dict) else None
+            if not isinstance(items, list):
+                raise ValueError("格式不對:應為 {\"tools\": [...]}")
+        except Exception as e:
+            messagebox.showerror("匯入失敗", str(e))
+            return
+        replace = messagebox.askyesno(
+            "匯入方式",
+            "要「整份覆蓋」目前的工具清單嗎?\n\n"
+            "是 = 整份取代\n否 = 合併(同 id 覆蓋、新 id 新增,其餘保留)")
+        cur = self._load_watch()
+        if replace:
+            merged = [t for t in items if t.get("id")]
+            added, updated = len(merged), 0
+        else:
+            by_id = {t.get("id"): i for i, t in enumerate(cur)}
+            added = updated = 0
+            for e in items:
+                tid = e.get("id")
+                if not tid:
+                    continue
+                if tid in by_id:
+                    cur[by_id[tid]] = {**cur[by_id[tid]], **e}
+                    updated += 1
+                else:
+                    cur.append(e)
+                    by_id[tid] = len(cur) - 1
+                    added += 1
+            merged = cur
+        self._save_watch(merged)
+        self._reload()
+        messagebox.showinfo(
+            "匯入完成",
+            f"新增 {added} 筆、更新 {updated} 筆,目前共 {len(merged)} 筆。")
 
     def _catalog(self) -> dict:
         return json.loads(TOOLS_JSON.read_text(encoding="utf-8"))
