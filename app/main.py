@@ -844,7 +844,7 @@ class ToolCard(ttk.Frame):
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
         else:
             self.status_label.config(
-                text=f"已安裝 v{installed_ver}(左側作業清單開啟)", foreground="#0a7")
+                text=f"已安裝 v{installed_ver}", foreground="#0a7")
             self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
 
