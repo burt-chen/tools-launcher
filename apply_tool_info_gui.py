@@ -185,13 +185,13 @@ class App:
         ttk.Button(bar1, text="新增工具", command=self._add).pack(side="left")
         ttk.Button(bar1, text="移除", command=self._remove).pack(side="left", padx=6)
         ttk.Button(bar1, text="檢查全部", command=self._check_all).pack(side="left", padx=6)
-        # 主要動作放這排,永遠看得到(不會被文字區擠出視窗)
-        ttk.Button(bar1, text="套用 → 寫入 tools.json",
-                   command=self._apply_selected).pack(side="right")
-        ttk.Button(bar1, text="從本機檔套用…",
-                   command=self._apply_file).pack(side="right", padx=6)
+        # 主要動作緊鄰「檢查全部」,永遠看得到(不會被文字區擠出視窗)
+        ttk.Button(bar1, text="更新tools",
+                   command=self._apply_selected).pack(side="left", padx=6)
+        ttk.Button(bar1, text="本機檔更新tools",
+                   command=self._apply_file).pack(side="right")
 
-        ttk.Label(frm, text="勾選(可多選)列後按「套用」;不選則套用全部「新/可更新」",
+        ttk.Label(frm, text="勾選(可多選)列後按「更新tools」;不選則更新全部「新/可更新」",
                   foreground="#888").grid(row=3, column=0, columnspan=2,
                                           sticky="w", pady=(6, 0))
 
