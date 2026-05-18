@@ -3,7 +3,6 @@ __pycache__/
 *.pyo
 build/
 dist/
-_test_data/
 *.spec
 python/
 unlock_records.json
