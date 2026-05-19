@@ -795,10 +795,13 @@ class ToolCard(ttk.Frame):
         self.tool = tool
         self.panel = panel
 
+        installed_ver = panel.installed_version(tool["id"])
+        disp_ver = installed_ver or tool["version"]  # 有裝顯示已安裝版,否則最新版
+
         header = ttk.Frame(self)
         header.pack(side=tk.TOP, fill=tk.X)
         ttk.Label(header, text=tool["name"], font=("Segoe UI", 11, "bold")).pack(side=tk.LEFT)
-        ttk.Label(header, text=f"  v{tool['version']}", foreground="#666").pack(side=tk.LEFT)
+        ttk.Label(header, text=f"  v{disp_ver}", foreground="#666").pack(side=tk.LEFT)
         cat = tool.get("category")
         if cat:
             ttk.Label(header, text=f"  [{cat}]", foreground="#888").pack(side=tk.LEFT)
@@ -837,15 +840,12 @@ class ToolCard(ttk.Frame):
             self.status_label.config(text="未安裝", foreground="#888")
             self._add_btn("安裝", lambda: self.panel.do_install(self.tool))
         elif installed_ver != latest:
-            self.status_label.config(
-                text=f"已安裝 v{installed_ver} 可更新 v{latest}",
-                foreground="#c0392b")
+            self.status_label.config(text="可更新", foreground="#c0392b")
             self._add_btn("更新", lambda: self.panel.do_install(self.tool))
             self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
         else:
-            self.status_label.config(
-                text=f"已安裝 v{installed_ver}", foreground="#1a7f37")
+            self.status_label.config(text="已安裝", foreground="#1a7f37")
             self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
 
