@@ -28,7 +28,8 @@ _DIR = Path(__file__).resolve().parent
 TOOLS_JSON = _DIR / "tools.json"
 WATCH_JSON = _DIR / "watch_tools.json"
 
-TOP_FIELDS = ("name", "description", "version", "size_bytes", "url",
+TOP_FIELDS = ("name", "description", "version", "size_bytes",
+              "installed_size_bytes", "url",
               "sha256", "category", "homepage")
 LATEST_URL = "https://github.com/{owner}/{repo}/releases/latest/download/tool_info.json"
 

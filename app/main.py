@@ -1000,8 +1000,13 @@ class ToolCard(ttk.Frame):
             ttk.Label(self, text=desc, foreground="#444", wraplength=720, justify=tk.LEFT).pack(
                 side=tk.TOP, fill=tk.X, pady=(4, 0))
 
+        isz = tool.get("installed_size_bytes")
         size = tool.get("size_bytes")
-        if size:
+        if isz:
+            extra = f"（下載 {_fmt_size(size)}）" if size else ""
+            ttk.Label(self, text=f"安裝後大小:約 {_fmt_size(isz)}{extra}",
+                      foreground="#888").pack(side=tk.TOP, anchor=tk.W)
+        elif size:
             ttk.Label(self, text=f"大小:{_fmt_size(size)}", foreground="#888").pack(
                 side=tk.TOP, anchor=tk.W)
 
