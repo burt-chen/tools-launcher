@@ -385,6 +385,11 @@ class LauncherApp(tk.Tk):
             item.set_dragging(False)   # 沒有有效落點,還原外觀
             return
         grp = sec.title if sec.kind == "group" else None
+        # 同區重排:idx 是含被拖項目的位置,move_tool 會先移除再插入,
+        # 若原位置在目標之前要減一,否則會往下多掉一格
+        if item.section is sec and item in sec.items:
+            if sec.items.index(item) < idx:
+                idx -= 1
         settings.move_tool(self.settings, item.key, sec.kind, grp, idx)
         settings.save(self.settings)
         # 延後重建:避免在 widget 自己的事件處理中銷毀它
@@ -413,6 +418,11 @@ class LauncherApp(tk.Tk):
             if e.y_root <= g.winfo_rooty() + g.winfo_height() / 2:
                 idx = i
                 break
+        # idx 含被拖群組;move_group 先移除再插入,原位置在目標前要減一
+        cur = next((i for i, g in enumerate(gs)
+                    if g.title == sec.title), None)
+        if cur is not None and cur < idx:
+            idx -= 1
         settings.move_group(self.settings, sec.title, idx)
         settings.save(self.settings)
         self.after(0, self._rebuild_nav)
