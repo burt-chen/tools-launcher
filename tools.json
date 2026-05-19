@@ -11,10 +11,10 @@
       "id": "tools-releases-pack",
       "name": "releases打包工具",
       "description": "releases打包工具產生tools",
-      "version": "1.2.0",
-      "size_bytes": 16446,
-      "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.2.0/tools-releases-pack-v1.2.0.zip",
-      "sha256": "eac8e92731d59eb98dc1f076b7d2eb54ca93f15725a694b34e46af40b32885fe",
+      "version": "v1.3.0",
+      "size_bytes": 17415,
+      "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/vv1.3.0/tools-releases-pack-vv1.3.0.zip",
+      "sha256": "5d2fc0bddaecc54c1dae0585584d6f18772c17bf04bd73e68933e1d92a5fc4d2",
       "category": "程式開發工具",
       "homepage": "https://github.com/burt-chen/tools-releases-pack",
       "versions": [
@@ -32,6 +32,11 @@
           "version": "1.2.0",
           "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.2.0/tools-releases-pack-v1.2.0.zip",
           "size_bytes": 16446
+        },
+        {
+          "version": "v1.3.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/vv1.3.0/tools-releases-pack-vv1.3.0.zip",
+          "size_bytes": 17415
         }
       ],
       "hidden": true,
