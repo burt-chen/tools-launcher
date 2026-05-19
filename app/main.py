@@ -28,25 +28,37 @@ NAV_SEL = "#cfe2ff"
 NAV_FONT = ("Segoe UI", 10)
 
 
+DRAG_THRESHOLD = 6
+DRAG_MARK = "#0a58ca"
+
+
 class NavItem(tk.Frame):
-    """左側作業清單的一個可點項目。"""
+    """左側作業清單的一個可點項目(工具項可拖曳排序/移動分組)。"""
 
     def __init__(self, parent: tk.Widget, key: str, text: str,
                  on_click: Callable[[str], None], indent: int = 18,
-                 on_menu: Callable[[tk.Event, str], None] | None = None) -> None:
+                 on_menu: Callable[[tk.Event, str], None] | None = None,
+                 app: "LauncherApp | None" = None, draggable: bool = False) -> None:
         super().__init__(parent, bg=SIDEBAR_BG, cursor="hand2")
         self.key = key
         self._on_click = on_click
+        self._app = app
+        self._draggable = draggable
+        self.section: "GroupSection | None" = None
         self._selected = False
+        self._press_y = 0
+        self._moved = False
         self.lbl = tk.Label(
             self, text=text, bg=SIDEBAR_BG, anchor="w",
             padx=indent, pady=7, font=NAV_FONT,
         )
         self.lbl.pack(fill=tk.X)
         for w in (self, self.lbl):
-            w.bind("<Button-1>", lambda _e: self._on_click(self.key))
             w.bind("<Enter>", self._enter)
             w.bind("<Leave>", self._leave)
+            w.bind("<ButtonPress-1>", self._press)
+            w.bind("<B1-Motion>", self._motion)
+            w.bind("<ButtonRelease-1>", self._release)
             if on_menu is not None:
                 w.bind("<Button-3>", lambda e: on_menu(e, self.key))
 
@@ -66,6 +78,24 @@ class NavItem(tk.Frame):
         self._selected = sel
         self._paint(NAV_SEL if sel else SIDEBAR_BG)
 
+    def _press(self, e: tk.Event) -> None:
+        self._press_y = e.y_root
+        self._moved = False
+
+    def _motion(self, e: tk.Event) -> None:
+        if not self._draggable or self._app is None:
+            return
+        if not self._moved and abs(e.y_root - self._press_y) < DRAG_THRESHOLD:
+            return
+        self._moved = True
+        self._app.drag_tool_motion(e, self)
+
+    def _release(self, e: tk.Event) -> None:
+        if self._draggable and self._moved and self._app is not None:
+            self._app.drag_tool_drop(e, self)
+        else:
+            self._on_click(self.key)
+
 
 class GroupSection(tk.Frame):
     """左側清單的一個可折疊分區(我的最愛 / 自訂群組 / 未分組)。"""
@@ -77,6 +107,9 @@ class GroupSection(tk.Frame):
         self.kind = kind
         self.app = app
         self._collapsed = collapsed
+        self.items: list[NavItem] = []   # 本區的工具項(拖曳定位用)
+        self._press_y = 0
+        self._moved = False
 
         self.header = tk.Frame(self, bg=SIDEBAR_BG, cursor="hand2")
         self.header.pack(fill=tk.X)
@@ -96,9 +129,29 @@ class GroupSection(tk.Frame):
             self.body.pack(fill=tk.X)
 
         for w in (self.header, self.tri, self.title_lbl):
-            w.bind("<Button-1>", self._toggle)
+            w.bind("<ButtonPress-1>", self._press)
+            w.bind("<B1-Motion>", self._motion)
+            w.bind("<ButtonRelease-1>", self._release)
             if kind == "group":
                 w.bind("<Button-3>", self._menu)
+
+    def _press(self, e: tk.Event) -> None:
+        self._press_y = e.y_root
+        self._moved = False
+
+    def _motion(self, e: tk.Event) -> None:
+        if self.kind != "group":
+            return
+        if not self._moved and abs(e.y_root - self._press_y) < DRAG_THRESHOLD:
+            return
+        self._moved = True
+        self.app.drag_group_motion(e, self)
+
+    def _release(self, e: tk.Event) -> None:
+        if self.kind == "group" and self._moved:
+            self.app.drag_group_drop(e, self)
+        else:
+            self._toggle()
 
     def _toggle(self, _e: tk.Event | None = None) -> None:
         self._collapsed = not self._collapsed
@@ -158,6 +211,8 @@ class LauncherApp(tk.Tk):
         self._installed: dict = installer.load_installed()
         self._panels: dict[str, tk.Widget] = {}
         self._nav_items: list[NavItem] = []
+        self._sections: list[GroupSection] = []
+        self._drop_marker: tk.Frame | None = None
         self._current_key: str | None = None
         self._launcher_update: tuple[str, str, str] | None = None  # (version, url, sha256)
 
@@ -225,15 +280,20 @@ class LauncherApp(tk.Tk):
             self._update_nav_selection()
             return
 
+        self._sections = []
         for title, kind, ids in settings.grouped_sections(installed_ids, self.settings):
             sec = GroupSection(self.nav_frame, title, kind, self, title in self.collapsed)
             sec.pack(side=tk.TOP, fill=tk.X)
+            self._sections.append(sec)
             for tid in ids:
                 nav = NavItem(
                     sec.body, tid, self._tool_name(tid), self._show,
                     indent=34, on_menu=self.show_tool_menu,
+                    app=self, draggable=True,
                 )
+                nav.section = sec
                 nav.pack(fill=tk.X)
+                sec.items.append(nav)
                 self._nav_items.append(nav)
             if not ids:
                 tk.Label(
@@ -246,6 +306,92 @@ class LauncherApp(tk.Tk):
     def _update_nav_selection(self) -> None:
         for item in self._nav_items:
             item.set_selected(item.key == self._current_key)
+
+    # ---------- 拖曳排序 ----------
+
+    def _marker(self) -> tk.Frame:
+        if getattr(self, "_drop_marker", None) is None:
+            self._drop_marker = tk.Frame(self.nav_frame, height=2, bg=DRAG_MARK)
+        return self._drop_marker
+
+    def _mark_at(self, y_root: int) -> None:
+        m = self._marker()
+        y = y_root - self.nav_frame.winfo_rooty()
+        m.place(x=0, y=max(0, y - 1), relwidth=1)
+        m.lift()
+
+    def _clear_mark(self) -> None:
+        if getattr(self, "_drop_marker", None) is not None:
+            self._drop_marker.place_forget()
+
+    def _tool_target(self, y_root: int):
+        """回傳 (section, index):游標位置對應的分區與插入索引。"""
+        secs = getattr(self, "_sections", [])
+        if not secs:
+            return None, 0
+        for sec in secs:
+            top = sec.winfo_rooty()
+            bot = top + sec.winfo_height()
+            if y_root < top:
+                return sec, 0
+            if y_root <= bot:
+                idx = 0
+                for it in sec.items:
+                    if y_root > it.winfo_rooty() + it.winfo_height() / 2:
+                        idx += 1
+                return sec, idx
+        last = secs[-1]
+        return last, len(last.items)
+
+    def drag_tool_motion(self, e: tk.Event, item: "NavItem") -> None:
+        sec, idx = self._tool_target(e.y_root)
+        if sec is None:
+            self._clear_mark()
+            return
+        if idx < len(sec.items):
+            y = sec.items[idx].winfo_rooty()
+        elif sec.items:
+            last = sec.items[-1]
+            y = last.winfo_rooty() + last.winfo_height()
+        else:
+            y = sec.body.winfo_rooty()
+        self._mark_at(y)
+
+    def drag_tool_drop(self, e: tk.Event, item: "NavItem") -> None:
+        self._clear_mark()
+        sec, idx = self._tool_target(e.y_root)
+        if sec is None:
+            return
+        grp = sec.title if sec.kind == "group" else None
+        settings.move_tool(self.settings, item.key, sec.kind, grp, idx)
+        settings.save(self.settings)
+        self._rebuild_nav()
+
+    def _group_sections(self) -> list:
+        return [s for s in getattr(self, "_sections", []) if s.kind == "group"]
+
+    def drag_group_motion(self, e: tk.Event, sec: "GroupSection") -> None:
+        gs = self._group_sections()
+        if not gs:
+            return
+        for g in gs:
+            if e.y_root <= g.winfo_rooty() + g.winfo_height() / 2:
+                self._mark_at(g.winfo_rooty())
+                return
+        last = gs[-1]
+        self._mark_at(last.winfo_rooty() + last.winfo_height())
+
+    def drag_group_drop(self, e: tk.Event, sec: "GroupSection") -> None:
+        self._clear_mark()
+        gs = self._group_sections()
+        idx = len(gs)
+        for i, g in enumerate(gs):
+            if e.y_root <= g.winfo_rooty() + g.winfo_height() / 2:
+                idx = i
+                break
+        settings.move_group(self.settings, sec.title, idx)
+        settings.save(self.settings)
+        self._rebuild_nav()
 
     # ---------- 右側內容切換 ----------
 
