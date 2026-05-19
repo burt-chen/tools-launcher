@@ -30,6 +30,7 @@ NAV_FONT = ("Segoe UI", 10)
 
 DRAG_THRESHOLD = 6
 DRAG_MARK = "#0a58ca"
+DRAG_SRC = "#ffd9a0"   # 拖曳中項目的明顯底色
 
 
 class NavItem(tk.Frame):
@@ -46,6 +47,7 @@ class NavItem(tk.Frame):
         self._draggable = draggable
         self.section: "GroupSection | None" = None
         self._selected = False
+        self._dragging = False
         self._press_y = 0
         self._moved = False
         self.lbl = tk.Label(
@@ -63,11 +65,11 @@ class NavItem(tk.Frame):
                 w.bind("<Button-3>", lambda e: on_menu(e, self.key))
 
     def _enter(self, _e: tk.Event) -> None:
-        if not self._selected:
+        if not self._selected and not self._dragging:
             self._paint(NAV_HOVER)
 
     def _leave(self, _e: tk.Event) -> None:
-        if not self._selected:
+        if not self._selected and not self._dragging:
             self._paint(SIDEBAR_BG)
 
     def _paint(self, bg: str) -> None:
@@ -76,7 +78,15 @@ class NavItem(tk.Frame):
 
     def set_selected(self, sel: bool) -> None:
         self._selected = sel
-        self._paint(NAV_SEL if sel else SIDEBAR_BG)
+        if not self._dragging:
+            self._paint(NAV_SEL if sel else SIDEBAR_BG)
+
+    def set_dragging(self, on: bool) -> None:
+        self._dragging = on
+        if on:
+            self._paint(DRAG_SRC)
+        else:
+            self._paint(NAV_SEL if self._selected else SIDEBAR_BG)
 
     def _press(self, e: tk.Event) -> None:
         self._press_y = e.y_root
@@ -134,6 +144,11 @@ class GroupSection(tk.Frame):
             w.bind("<ButtonRelease-1>", self._release)
             if kind == "group":
                 w.bind("<Button-3>", self._menu)
+
+    def set_dragging(self, on: bool) -> None:
+        bg = DRAG_SRC if on else SIDEBAR_BG
+        for w in (self.header, self.tri, self.title_lbl):
+            w.configure(bg=bg)
 
     def _press(self, e: tk.Event) -> None:
         self._press_y = e.y_root
@@ -253,6 +268,9 @@ class LauncherApp(tk.Tk):
     def _rebuild_nav(self) -> None:
         for w in self.nav_frame.winfo_children():
             w.destroy()
+        # 標記線也是 nav_frame 子物件,上面已被銷毀;清掉參照以免下次拖曳
+        # 對已銷毀 widget 操作而丟例外(導致拖一次後就不能再拖)
+        self._drop_marker = None
         self._nav_items = []
 
         # 設定 — 釘最下方;有 launcher 新版時標示
@@ -310,7 +328,8 @@ class LauncherApp(tk.Tk):
     # ---------- 拖曳排序 ----------
 
     def _marker(self) -> tk.Frame:
-        if getattr(self, "_drop_marker", None) is None:
+        m = getattr(self, "_drop_marker", None)
+        if m is None or not m.winfo_exists():
             self._drop_marker = tk.Frame(self.nav_frame, height=2, bg=DRAG_MARK)
         return self._drop_marker
 
@@ -321,8 +340,9 @@ class LauncherApp(tk.Tk):
         m.lift()
 
     def _clear_mark(self) -> None:
-        if getattr(self, "_drop_marker", None) is not None:
-            self._drop_marker.place_forget()
+        m = getattr(self, "_drop_marker", None)
+        if m is not None and m.winfo_exists():
+            m.place_forget()
 
     def _tool_target(self, y_root: int):
         """回傳 (section, index):游標位置對應的分區與插入索引。"""
@@ -344,6 +364,7 @@ class LauncherApp(tk.Tk):
         return last, len(last.items)
 
     def drag_tool_motion(self, e: tk.Event, item: "NavItem") -> None:
+        item.set_dragging(True)   # 明顯標示正在拖曳的項目
         sec, idx = self._tool_target(e.y_root)
         if sec is None:
             self._clear_mark()
@@ -361,16 +382,19 @@ class LauncherApp(tk.Tk):
         self._clear_mark()
         sec, idx = self._tool_target(e.y_root)
         if sec is None:
+            item.set_dragging(False)   # 沒有有效落點,還原外觀
             return
         grp = sec.title if sec.kind == "group" else None
         settings.move_tool(self.settings, item.key, sec.kind, grp, idx)
         settings.save(self.settings)
-        self._rebuild_nav()
+        # 延後重建:避免在 widget 自己的事件處理中銷毀它
+        self.after(0, self._rebuild_nav)
 
     def _group_sections(self) -> list:
         return [s for s in getattr(self, "_sections", []) if s.kind == "group"]
 
     def drag_group_motion(self, e: tk.Event, sec: "GroupSection") -> None:
+        sec.set_dragging(True)   # 明顯標示正在拖曳的群組
         gs = self._group_sections()
         if not gs:
             return
@@ -391,7 +415,7 @@ class LauncherApp(tk.Tk):
                 break
         settings.move_group(self.settings, sec.title, idx)
         settings.save(self.settings)
-        self._rebuild_nav()
+        self.after(0, self._rebuild_nav)
 
     # ---------- 右側內容切換 ----------
 
