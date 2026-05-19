@@ -838,7 +838,8 @@ class ToolCard(ttk.Frame):
             self._add_btn("安裝", lambda: self.panel.do_install(self.tool))
         elif installed_ver != latest:
             self.status_label.config(
-                text=f"可更新 v{latest}", foreground="#c0392b")
+                text=f"已安裝 v{installed_ver} 可更新 v{latest}",
+                foreground="#c0392b")
             self._add_btn("更新", lambda: self.panel.do_install(self.tool))
             self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
