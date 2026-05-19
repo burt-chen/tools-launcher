@@ -98,13 +98,13 @@
     },
     {
       "id": "PDF-Splitte",
-      "name": "PDF-Splitte",
-      "description": "PDF切割",
+      "name": "PDF切割",
+      "description": "可將PDF 依關鍵字、固定頁數、頁碼、自訂規則 進行PDF切割分檔",
       "version": "1.0.0",
       "size_bytes": 18163,
       "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.0/PDF-Splitte-v1.0.0.zip",
       "sha256": "4733694a2e00c524e6d3d14f3c5ec750badacde24c4023d4882ee22e8738225a",
-      "category": "可將PDF 依關鍵字、固定頁數、頁碼、自訂規則 進行PDF切割分檔",
+      "category": "資料處理",
       "homepage": "https://github.com/burt-chen/PDF-Splitte",
       "versions": [
         {
