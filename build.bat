@@ -43,6 +43,7 @@ python -m PyInstaller ^
     --hidden-import tkinter.colorchooser ^
     --hidden-import importlib.util ^
     --collect-submodules xml ^
+    --collect-submodules html ^
     --hidden-import _elementtree ^
     --hidden-import pyexpat ^
     --hidden-import decimal ^
