@@ -9,6 +9,9 @@ from pathlib import Path
 
 from . import installer
 
+# 保留 os.add_dll_directory 回傳的 handle,行程存活期間目錄才持續有效
+_DLL_DIR_HANDLES: list = []
+
 
 def _purge_tool_modules(tool_dir: Path, tool_id: str) -> None:
     """清掉上次載入此工具殘留在 sys.modules 的模組。
@@ -63,6 +66,18 @@ def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
     if tool_dir_str in sys.path:
         sys.path.remove(tool_dir_str)
     sys.path.insert(0, tool_dir_str)
+
+    # 把工具目錄(及常見的 bin/)加入 DLL 搜尋路徑。
+    # Python 3.8+ 不再用 PATH 找相依 DLL;含原生套件的工具(如
+    # PyMuPDF/fitz)在凍結的 launcher 行程內會「DLL load failed /
+    # 找不到指定的模組」。獨立跑 python 沒事,就是差這個。
+    if hasattr(os, "add_dll_directory"):
+        for d in (tool_dir, tool_dir / "bin"):
+            try:
+                if d.is_dir():
+                    _DLL_DIR_HANDLES.append(os.add_dll_directory(str(d)))
+            except OSError:
+                pass
 
     spec = importlib.util.spec_from_file_location(f"_tool_{tool_id}", main_frame_path)
     mod = importlib.util.module_from_spec(spec)
