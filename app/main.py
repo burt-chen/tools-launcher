@@ -276,6 +276,8 @@ class LauncherApp(tk.Tk):
         # 設定 — 釘最下方;有 launcher 新版時標示
         settings_label = "設定（有新版）" if self._launcher_update else "設定"
         item = NavItem(self.nav_frame, "settings", settings_label, self._show)
+        if self._launcher_update:
+            item.lbl.configure(fg="#c0392b")   # 有新版 → 紅字
         item.pack(side=tk.BOTTOM, fill=tk.X)
         self._nav_items.append(item)
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
