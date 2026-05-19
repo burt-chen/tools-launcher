@@ -72,10 +72,17 @@ def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
     # PyMuPDF/fitz)在凍結的 launcher 行程內會「DLL load failed /
     # 找不到指定的模組」。獨立跑 python 沒事,就是差這個。
     if hasattr(os, "add_dll_directory"):
-        for d in (tool_dir, tool_dir / "bin"):
+        dll_dirs = {tool_dir}
+        try:
+            # 任何含 .dll/.pyd 的子資料夾都要納入(如 PyMuPDF 的 pymupdf/)
+            for root, _dirs, files in os.walk(tool_dir):
+                if any(f.lower().endswith((".dll", ".pyd")) for f in files):
+                    dll_dirs.add(Path(root))
+        except OSError:
+            pass
+        for d in dll_dirs:
             try:
-                if d.is_dir():
-                    _DLL_DIR_HANDLES.append(os.add_dll_directory(str(d)))
+                _DLL_DIR_HANDLES.append(os.add_dll_directory(str(d)))
             except OSError:
                 pass
 
