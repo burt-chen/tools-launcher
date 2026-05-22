@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-05-21",
+  "updated_at": "2026-05-22",
   "launcher": {
     "version": "1.0.8",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.0.8/MyToolsLauncher.exe",
@@ -130,10 +130,10 @@
       "id": "land-query",
       "name": "國土圖台批次查詢",
       "description": "批次查詢國土測繪地籍資料",
-      "version": "1.2.0",
-      "size_bytes": 22317,
-      "url": "https://github.com/burt-chen/land-query/releases/download/v1.2.0/land-query-v1.2.0.zip",
-      "sha256": "b431132115fbd1f828e893b0b7b5fee9ad4564252781cbae9e4b6a344079f8c5",
+      "version": "1.3.0",
+      "size_bytes": 24602,
+      "url": "https://github.com/burt-chen/land-query/releases/download/v1.3.0/land-query-v1.3.0.zip",
+      "sha256": "2a5ea9100b3b730d17239ca9c4ec72ba57e74fb9f1ad8d36cbbddb25877410f3",
       "category": "資料查詢",
       "homepage": "https://github.com/burt-chen/land-query",
       "versions": [
@@ -151,9 +151,14 @@
           "version": "1.2.0",
           "url": "https://github.com/burt-chen/land-query/releases/download/v1.2.0/land-query-v1.2.0.zip",
           "size_bytes": 22317
+        },
+        {
+          "version": "1.3.0",
+          "url": "https://github.com/burt-chen/land-query/releases/download/v1.3.0/land-query-v1.3.0.zip",
+          "size_bytes": 24602
         }
       ],
-      "installed_size_bytes": 5241277
+      "installed_size_bytes": 5361822
     }
   ],
   "master_unlock_hash": "9fe77c3d4fa85f0512de0057111a83edd494c9f8c8ebf93c4ab47208bb2351d4"
