@@ -920,6 +920,9 @@ class CatalogPanel(ttk.Frame):
         self._cancel_flags[tool_id] = False
         card.set_busy(True)
         self.app.set_status(f"下載中:{tool['name']}…")
+        # 抓「安裝前是否已裝過」— 用來判斷是否需提示重啟:首次安裝即使
+        # 含 .pyd 也不必重啟(舊行程沒載入過),只有更新/換版才需要
+        was_installed = self.installed_version(tool_id) is not None
 
         def progress(d: int, t: int) -> None:
             self.after(0, card.set_progress, d, t)
@@ -930,16 +933,17 @@ class CatalogPanel(ttk.Frame):
         def worker() -> None:
             try:
                 installer.install(tool, on_progress=progress, cancel_flag=cancel_check)
-                self.after(0, self._on_install_done, tool, None)
+                self.after(0, self._on_install_done, tool, None, was_installed)
             except Exception as e:
-                self.after(0, self._on_install_done, tool, e)
+                self.after(0, self._on_install_done, tool, e, was_installed)
 
         threading.Thread(target=worker, daemon=True).start()
 
     def do_cancel(self, tool_id: str) -> None:
         self._cancel_flags[tool_id] = True
 
-    def _on_install_done(self, tool: dict, err: Exception | None) -> None:
+    def _on_install_done(self, tool: dict, err: Exception | None,
+                         was_installed: bool = False) -> None:
         tool_id = tool["id"]
         card = self._cards.get(tool_id)
         if card:
@@ -950,11 +954,25 @@ class CatalogPanel(ttk.Frame):
             else:
                 self.app.set_status("安裝失敗")
                 messagebox.showerror("安裝失敗", str(err))
-        else:
-            self._installed = installer.load_installed()
-            self.app.set_status(f"已安裝:{tool['name']} v{tool['version']}")
-            self.render()
-            self.app.on_installed_changed(tool["id"])
+            return
+
+        self._installed = installer.load_installed()
+        self.app.set_status(f"已安裝:{tool['name']} v{tool['version']}")
+        self.render()
+        self.app.on_installed_changed(tool_id)
+
+        # 更新/換版含原生模組的工具:行程裡載入的還是舊 .pyd
+        # (LoadLibrary 不允許覆蓋已載入的 DLL),須重啟 launcher 才會用到新版。
+        # 首次安裝不需要(舊行程沒載入過)、非 frozen 不需要(開發模式不會走自更新)
+        if (was_installed
+                and self_update.is_frozen()
+                and installer.has_native_modules(tool_id)):
+            if messagebox.askyesno(
+                    "重啟 Launcher",
+                    f"「{tool['name']}」包含原生模組,需要重啟 Launcher 才能套用更新。\n\n"
+                    "是否立即重啟?(選「否」可稍後手動重啟)"):
+                self_update.relaunch_self()
+                self.app.destroy()
 
     def do_uninstall(self, tool: dict) -> None:
         if not messagebox.askyesno("移除", f"確定要移除「{tool['name']}」嗎?"):
@@ -1254,6 +1272,7 @@ def _fmt_size(n: float) -> str:
 def main() -> None:
     config.ensure_dirs()
     self_update.cleanup_old()   # 清掉上次自更新殘留的舊 exe
+    installer.purge_pending_deletes()  # 清掉上次更新含 .pyd 工具時 rename-aside 的舊夾
 
     if not python_env.is_ready():
         _run_python_setup()

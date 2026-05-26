@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "MyTools"
-APP_VERSION = "1.1.6"  # Launcher 自身版本,與 tools.json 的 launcher.version 比對
+APP_VERSION = "1.1.7"  # Launcher 自身版本,與 tools.json 的 launcher.version 比對
 
 # Catalog 來源 URL。優先讀環境變數,方便測試切換到本地檔。
 # 例:set MYTOOLS_CATALOG_URL=file:///D:/工具開發/小工具管理/tools.json

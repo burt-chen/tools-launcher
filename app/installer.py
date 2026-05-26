@@ -6,6 +6,7 @@ import hashlib
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 import zipfile
 from datetime import datetime
@@ -15,6 +16,50 @@ from typing import Callable
 from . import config
 
 ProgressCb = Callable[[int, int], None]  # (downloaded_bytes, total_bytes)
+
+
+# ----- 鎖定檔案處理(.pyd / .dll 被 LoadLibrary 載入後不能刪也不能蓋,
+#       但可以改名;改名後新安裝可繼續,殘檔由下次啟動清掉) -----
+
+def _rename_aside(path: Path) -> bool:
+    """把無法刪除的路徑改名為 *.pendingdelete-<ts>,讓新安裝可繼續。"""
+    if not path.exists():
+        return True
+    ts = int(time.time() * 1000)
+    aside = path.with_name(f"{path.name}.pendingdelete-{ts}")
+    try:
+        path.rename(aside)
+        return True
+    except OSError:
+        return False
+
+
+def purge_pending_deletes() -> None:
+    """啟動時清掉 rename-aside 留下的舊安裝目錄 / 殘留檔。
+
+    新行程裡那些 .pyd 還沒被載入,所以能刪;刪不掉就下次再清。
+    """
+    if not config.TOOLS_DIR.exists():
+        return
+    for p in config.TOOLS_DIR.glob("*.pendingdelete-*"):
+        try:
+            if p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                p.unlink()
+        except OSError:
+            pass
+
+
+def has_native_modules(tool_id: str) -> bool:
+    """工具目錄內是否有 .pyd / 原生擴充 — 更新後需重啟 launcher 才會生效。"""
+    dest_dir = config.TOOLS_DIR / tool_id
+    if not dest_dir.exists():
+        return False
+    for f in dest_dir.rglob("*.pyd"):
+        if f.is_file():
+            return True
+    return False
 
 
 # ----- installed.json 讀寫 -----
@@ -128,18 +173,17 @@ def install(
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(old, target)
-        # 先寬鬆刪一次;若還在(檔案被佔用),再嚴格刪並報錯
+        # 先寬鬆刪一次;若還在(.pyd / .dll 被載入鎖住),改名為
+        # *.pendingdelete-<ts>,讓新安裝可繼續,殘檔由下次啟動清掉。
         shutil.rmtree(dest_dir, ignore_errors=True)
         if dest_dir.exists():
-            try:
-                shutil.rmtree(dest_dir)
-            except OSError as e:
+            if not _rename_aside(dest_dir):
                 shutil.rmtree(staging, ignore_errors=True)
                 raise RuntimeError(
                     f"無法清掉舊安裝目錄(可能有檔案被佔用):\n"
-                    f"  {dest_dir}\n  {e}\n"
+                    f"  {dest_dir}\n"
                     "請完全關閉該工具與 launcher 後重試,或手動刪除上述目錄。"
-                ) from e
+                )
 
     # 安全網:dest_dir 此時必須不存在,否則 shutil.move 會把 staging 搬「進」
     # dest_dir 變成子資料夾(導致 main_frame.py 被埋在 _<id>_new\ 裡)
@@ -249,6 +293,10 @@ def uninstall(tool_id: str) -> None:
     dest_dir = config.TOOLS_DIR / tool_id
     if dest_dir.exists():
         shutil.rmtree(dest_dir, ignore_errors=True)
+        # 含 .pyd 的工具若還開著,rmtree 會 silent fail;改名 aside,
+        # 讓 installed.json 與 tools 目錄狀態一致(下次啟動清掉殘檔)
+        if dest_dir.exists():
+            _rename_aside(dest_dir)
     installed = load_installed()
     if tool_id in installed:
         del installed[tool_id]

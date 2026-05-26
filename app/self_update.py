@@ -127,9 +127,27 @@ def do_update(url: str, sha256: str = "", on_progress=None) -> None:
         raise
 
     # 5. 啟動新版
-    #    必須清掉 PyInstaller onefile 的環境變數,否則新 exe 會沿用
-    #    舊行程的 _MEIxxxx 暫存夾(舊行程一結束就被清掉),導致新行程
-    #    之後延遲 import 時找不到 base_library.zip。並讓新行程獨立。
+    _spawn_detached(exe)
+
+
+def relaunch_self() -> None:
+    """直接重啟目前的 launcher。
+
+    含 .pyd 的工具更新後,行程裡仍是舊的原生模組(LoadLibrary 不允許
+    覆蓋已載入的 DLL/.pyd);重啟才會用到新版。開發模式不重啟。
+    """
+    if not is_frozen():
+        return
+    _spawn_detached(Path(sys.executable))
+
+
+def _spawn_detached(exe: Path) -> None:
+    """以乾淨環境、detached 方式啟動 exe,讓新行程與本行程完全切割。
+
+    必須清掉 PyInstaller onefile 的環境變數,否則新 exe 會沿用舊行程
+    的 _MEIxxxx 暫存夾(舊行程一結束就被清掉),導致新行程之後延遲
+    import 時找不到 base_library.zip。
+    """
     env = {
         k: v for k, v in os.environ.items()
         if k != "_MEIPASS2" and not k.startswith("_PYI")
