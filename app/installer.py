@@ -128,8 +128,27 @@ def install(
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(old, target)
+        # 先寬鬆刪一次;若還在(檔案被佔用),再嚴格刪並報錯
         shutil.rmtree(dest_dir, ignore_errors=True)
+        if dest_dir.exists():
+            try:
+                shutil.rmtree(dest_dir)
+            except OSError as e:
+                shutil.rmtree(staging, ignore_errors=True)
+                raise RuntimeError(
+                    f"無法清掉舊安裝目錄(可能有檔案被佔用):\n"
+                    f"  {dest_dir}\n  {e}\n"
+                    "請完全關閉該工具與 launcher 後重試,或手動刪除上述目錄。"
+                ) from e
 
+    # 安全網:dest_dir 此時必須不存在,否則 shutil.move 會把 staging 搬「進」
+    # dest_dir 變成子資料夾(導致 main_frame.py 被埋在 _<id>_new\ 裡)
+    if dest_dir.exists():
+        shutil.rmtree(staging, ignore_errors=True)
+        raise RuntimeError(
+            f"舊安裝目錄殘留,中止安裝以免結構錯誤:{dest_dir}\n"
+            "請完全關閉該工具與 launcher 後手動刪除該目錄,再重新安裝。"
+        )
     shutil.move(str(staging), str(dest_dir))
 
     _pip_install_if_needed(dest_dir)
