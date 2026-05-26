@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import site
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -66,6 +67,14 @@ def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
     if tool_dir_str in sys.path:
         sys.path.remove(tool_dir_str)
     sys.path.insert(0, tool_dir_str)
+
+    # 處理工具目錄內的 .pth 檔。pip --target 安裝出來的目錄不是 site-packages,
+    # .pth 不會被自動處理,導致 pywin32 等需要 .pth 把 win32/lib 加進 sys.path
+    # 的套件 import 失敗(典型錯誤:No module named 'pywintypes')。
+    try:
+        site.addsitedir(tool_dir_str)
+    except Exception:
+        pass
 
     # 把工具目錄(及常見的 bin/)加入 DLL 搜尋路徑。
     # Python 3.8+ 不再用 PATH 找相依 DLL;含原生套件的工具(如
