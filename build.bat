@@ -27,6 +27,10 @@ for /f "delims=" %%i in ('python -c "import sys,os;print(os.path.join(os.path.di
 REM 注意:launcher 是動態載入工具的 host。
 REM PyInstaller 只會打包 launcher 自己用到的標準庫,
 REM 但工具(如 openpyxl)需要 xml 等模組,必須在此明確納入。
+REM
+REM 反向:不要把 pywin32 打進 launcher exe;讓動態載入的工具用自己
+REM pip 裝的那份,否則 _MEI 內部分 pywin32 會被優先 import,工具的
+REM pythoncom / pywintypes 等找不到。下方有 --exclude-module 處理。
 python -m PyInstaller ^
     --noconfirm ^
     --clean ^
@@ -57,6 +61,14 @@ python -m PyInstaller ^
     --hidden-import logging.handlers ^
     --hidden-import csv ^
     --hidden-import sqlite3 ^
+    --exclude-module pywin32_bootstrap ^
+    --exclude-module pywin32_system32 ^
+    --exclude-module pywintypes ^
+    --exclude-module pythoncom ^
+    --exclude-module win32 ^
+    --exclude-module win32com ^
+    --exclude-module win32comext ^
+    --exclude-module Pythonwin ^
     %ENTRY%
 
 if errorlevel 1 (
