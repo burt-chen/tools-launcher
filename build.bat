@@ -51,6 +51,12 @@ python -m PyInstaller ^
     --hidden-import smtplib ^
     --collect-submodules email ^
     --hidden-import ssl ^
+    --collect-submodules unittest ^
+    --collect-submodules doctest ^
+    --hidden-import logging.config ^
+    --hidden-import logging.handlers ^
+    --hidden-import csv ^
+    --hidden-import sqlite3 ^
     %ENTRY%
 
 if errorlevel 1 (

@@ -147,7 +147,16 @@ def install(
 
 
 def _pip_install_if_needed(dest_dir: Path) -> None:
-    """如果工具包含 requirements.txt，用 pip 安裝到工具目錄內。"""
+    """如果工具包含 requirements.txt，用 pip 安裝到工具目錄內。
+
+    重要：強制 pip 抓「launcher 自己 Python 版本」的 wheel，而不是
+    讓內嵌/系統 pip 用自己的 Python 版本決定。
+
+    背景:launcher.exe (frozen by PyInstaller) 的 Python 版本由 build.bat
+    打包當下的 Python 決定;但 _find_python() 回傳的 pip 直譯器可能是
+    版本不同的內嵌 Python 或系統 Python。兩者不一致時,pip 會抓到
+    錯版 wheel (例如裝了 cp313 .pyd 給 cp314 launcher 載入會炸)。
+    """
     req_file = dest_dir / "requirements.txt"
     if not req_file.exists():
         return
@@ -160,13 +169,30 @@ def _pip_install_if_needed(dest_dir: Path) -> None:
             "（安裝時請勾選「Add Python to PATH」）"
         )
 
-    result = subprocess.run(
-        [python, "-m", "pip", "install", "-r", str(req_file), "--target", str(dest_dir), "--quiet"],
-        capture_output=True,
-        text=True,
-    )
+    # launcher 自己的 Python 版本（cp314 / cp313 等）—— 工具未來會在
+    # launcher 內被載入，所以 wheel 一定要對應這個版本
+    py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+    abi_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+
+    cmd = [
+        python, "-m", "pip", "install",
+        "-r", str(req_file),
+        "--target", str(dest_dir),
+        # 強制鎖 wheel tag 為 launcher 自己的 Python 版本
+        "--python-version", py_ver,
+        "--implementation", "cp",
+        "--abi", abi_tag,
+        "--platform", "win_amd64",
+        # cross-version 安裝必須只用 wheel（pip 無法跨版本編譯 sdist）
+        "--only-binary", ":all:",
+        "--quiet",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"pip install 失敗:\n{result.stderr}")
+        raise RuntimeError(
+            f"pip install 失敗 (target Python {py_ver}, abi {abi_tag}):\n"
+            f"{result.stderr}"
+        )
 
 
 def _find_python() -> str | None:
