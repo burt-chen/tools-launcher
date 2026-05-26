@@ -2,9 +2,9 @@
   "catalog_version": 2,
   "updated_at": "2026-05-26",
   "launcher": {
-    "version": "1.1.4",
-    "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.4/MyToolsLauncher.exe",
-    "sha256": "da2fcfd1e48b42794f385724f520f14c6feeb028e07abd304ffdcebdde3975f3"
+    "version": "1.1.5",
+    "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.5/MyToolsLauncher.exe",
+    "sha256": "cbe1d0404781179580a2ce20f5a50a54eca068d7459b59f5487f990219b41b14"
   },
   "tools": [
     {
