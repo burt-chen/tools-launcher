@@ -97,19 +97,16 @@ def load_frame(parent: tk.Widget, tool_id: str) -> tk.Widget:
 
     spec = importlib.util.spec_from_file_location(f"_tool_{tool_id}", main_frame_path)
     mod = importlib.util.module_from_spec(spec)
-    # 暫時隱藏 sys.frozen / _MEIPASS:某些套件(如 pywin32 的 pywintypes 載入器)
-    # 一偵測到「凍結 app」就只看 sys.executable 旁,不看 sys.path 上的工具
-    # --target 安裝。把這兩個屬性收起來,讓工具 import 走正常 sys.path 搜尋;
-    # 載入完成後立刻復原,不影響後續 launcher 自身行為。
+    # 暫時隱藏 sys.frozen:pywin32 的 pywintypes 載入器一偵測到「凍結 app」
+    # 就只看 sys.executable 旁,不看 sys.path 上工具 --target 安裝的 pythoncom。
+    # 只 pop frozen,**保留 _MEIPASS**(PyInstaller 自己的 frozen importer
+    # 要靠它找凍結進來的 tkinter 等模組,移掉會炸)。
     _saved_frozen = sys.__dict__.pop("frozen", None)
-    _saved_meipass = sys.__dict__.pop("_MEIPASS", None)
     try:
         spec.loader.exec_module(mod)
     finally:
         if _saved_frozen is not None:
             sys.frozen = _saved_frozen
-        if _saved_meipass is not None:
-            sys._MEIPASS = _saved_meipass
 
     if not hasattr(mod, "create_frame"):
         raise AttributeError(
