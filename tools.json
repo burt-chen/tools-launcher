@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-06-01",
   "launcher": {
     "version": "1.1.7",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.7/MyToolsLauncher.exe",
@@ -144,35 +144,20 @@
       "id": "DWG-to-PDF",
       "name": "DWG轉PDF",
       "description": "DWG轉PDF",
-      "version": "1.1.13",
-      "size_bytes": 28494977,
-      "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.13/DWG-to-PDF-v1.1.13.zip",
-      "sha256": "5b565ac5483a76a6fd0dc4cdd81311ee79e55a64e2c529e9a65d646b2a7e7ac8",
+      "version": "1.1.14",
+      "size_bytes": 28495613,
+      "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.14/DWG-to-PDF-v1.1.14.zip",
+      "sha256": "068186fee9f4d77c96337cde07b1389e78bcfc0b8a4496f61e7ff9c1db38b891",
       "category": "轉檔工具",
       "homepage": "https://github.com/burt-chen/DWG-to-PDF",
       "versions": [
         {
-          "version": "1.1.10",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.10/DWG-to-PDF-v1.1.10.zip",
-          "size_bytes": 28494614
-        },
-        {
-          "version": "1.1.11",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.11/DWG-to-PDF-v1.1.11.zip",
-          "size_bytes": 28494805
-        },
-        {
-          "version": "1.1.12",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.12/DWG-to-PDF-v1.1.12.zip",
-          "size_bytes": 28495482
-        },
-        {
-          "version": "1.1.13",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.13/DWG-to-PDF-v1.1.13.zip",
-          "size_bytes": 28494977
+          "version": "1.1.14",
+          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.14/DWG-to-PDF-v1.1.14.zip",
+          "size_bytes": 28495613
         }
       ],
-      "installed_size_bytes": 191236003,
+      "installed_size_bytes": 191236639,
       "hidden": true,
       "unlock_hash": "b8c91bc7935bea08d3ce19a8f5b4756633257bde099252bce97382b6036618ef"
     }
