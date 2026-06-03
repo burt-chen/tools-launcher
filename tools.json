@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-06-01",
+  "updated_at": "2026-06-03",
   "launcher": {
     "version": "1.1.7",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.7/MyToolsLauncher.exe",
@@ -91,20 +91,20 @@
       "id": "PDF-Splitte",
       "name": "PDF切割",
       "description": "可將PDF 依關鍵字、固定頁數、頁碼、自訂規則 進行PDF切割分檔",
-      "version": "1.0.0",
-      "size_bytes": 18163,
-      "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.0/PDF-Splitte-v1.0.0.zip",
-      "sha256": "4733694a2e00c524e6d3d14f3c5ec750badacde24c4023d4882ee22e8738225a",
+      "version": "1.0.1",
+      "size_bytes": 19379,
+      "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.1/PDF-Splitte-v1.0.1.zip",
+      "sha256": "be9a9f8980184f96d003458123ab6945072212f07dca458d38220b0fe03bd92f",
       "category": "資料處理",
       "homepage": "https://github.com/burt-chen/PDF-Splitte",
-      "versions": [
+      "versions": [      
         {
-          "version": "1.0.0",
-          "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.0/PDF-Splitte-v1.0.0.zip",
-          "size_bytes": 18163
+          "version": "1.0.1",
+          "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.1/PDF-Splitte-v1.0.1.zip",
+          "size_bytes": 19379
         }
       ],
-      "installed_size_bytes": 53310978
+      "installed_size_bytes": 53312194
     },
     {
       "id": "land-query",
