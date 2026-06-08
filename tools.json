@@ -166,10 +166,10 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.0.0",
-      "size_bytes": 37758,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.0/PDFToolkit-v1.0.0.zip",
-      "sha256": "a721319370e42317a5da8d803e0bc6c248bca6dd1bd7fc68d1eb076b48b59566",
+      "version": "1.0.1",
+      "size_bytes": 40317,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.1/PDFToolkit-v1.0.1.zip",
+      "sha256": "5c0c8e90fe68927cb306904f8aba2f1af84c9e7b646a4b84487d981e09c75dfe",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
@@ -177,9 +177,32 @@
           "version": "1.0.0",
           "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.0/PDFToolkit-v1.0.0.zip",
           "size_bytes": 37758
+        },
+        {
+          "version": "1.0.1",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.1/PDFToolkit-v1.0.1.zip",
+          "size_bytes": 40317
         }
       ],
-      "installed_size_bytes": 54810289
+      "installed_size_bytes": 54812848
+    },
+    {
+      "id": "photoTool",
+      "name": "照片批次加註工具",
+      "description": "批次在照片上加註文字(日期/座標/檔名或自訂);支援對照表、EXIF資訊、白字黑框等樣式、四角位置與預覽",
+      "version": "1.0.0",
+      "size_bytes": 17067,
+      "url": "https://github.com/burt-chen/photoTool/releases/download/v1.0.0/photoTool-v1.0.0.zip",
+      "sha256": "b25be8fd0721d28cc6d3f702c6f8c53b341f831b8df415a2db4c4180aa0812ee",
+      "category": "影像處理",
+      "homepage": "https://github.com/burt-chen/photoTool",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "url": "https://github.com/burt-chen/photoTool/releases/download/v1.0.0/photoTool-v1.0.0.zip",
+          "size_bytes": 17067
+        }
+      ]
     }
   ],
   "master_unlock_hash": "9fe77c3d4fa85f0512de0057111a83edd494c9f8c8ebf93c4ab47208bb2351d4"
