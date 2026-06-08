@@ -145,10 +145,10 @@
       "id": "DWG-to-PDF",
       "name": "DWG轉PDF",
       "description": "DWG轉PDF",
-      "version": "1.1.15",
-      "size_bytes": 28495613,
-      "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.15/DWG-to-PDF-v1.1.15.zip",
-      "sha256": "068186fee9f4d77c96337cde07b1389e78bcfc0b8a4496f61e7ff9c1db38b891",
+      "version": "1.1.16",
+      "size_bytes": 28495950,
+      "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.16/DWG-to-PDF-v1.1.16.zip",
+      "sha256": "aa710a7c0a81ee15276e33b5391f12d80753a205681ab604219f422509010b66",
       "category": "轉檔工具",
       "homepage": "https://github.com/burt-chen/DWG-to-PDF",
       "versions": [
@@ -156,9 +156,19 @@
           "version": "1.1.15",
           "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.15/DWG-to-PDF-v1.1.15.zip",
           "size_bytes": 28495613
+        },
+        {
+          "version": "1.1.14",
+          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.14/DWG-to-PDF-v1.1.14.zip",
+          "size_bytes": 28495613
+        },
+        {
+          "version": "1.1.16",
+          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.16/DWG-to-PDF-v1.1.16.zip",
+          "size_bytes": 28495950
         }
       ],
-      "installed_size_bytes": 191236639,
+      "installed_size_bytes": 191236976,
       "hidden": true,
       "unlock_hash": "b8c91bc7935bea08d3ce19a8f5b4756633257bde099252bce97382b6036618ef"
     },
