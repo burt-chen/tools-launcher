@@ -21,6 +21,7 @@ UI_FONT_SIZE = 12
 from . import catalog, config, installer, launcher_run, python_env, self_update, settings
 
 SIDEBAR_W = 222
+SIDEBAR_W_COLLAPSED = 32
 SIDEBAR_BG = "#eef1f5"
 SIDEBAR_LINE = "#d4d9e0"
 NAV_HOVER = "#e0e6ee"
@@ -249,16 +250,56 @@ class LauncherApp(tk.Tk):
         self.sidebar = tk.Frame(body, bg=SIDEBAR_BG, width=SIDEBAR_W)
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.sidebar.pack_propagate(False)
-        tk.Label(
-            self.sidebar, text="作業清單", bg=SIDEBAR_BG, anchor="w",
+
+        # 標題列(標題 + 收合 / 展開按鈕)
+        self.sidebar_header = tk.Frame(self.sidebar, bg=SIDEBAR_BG)
+        self.sidebar_header.pack(side=tk.TOP, fill=tk.X)
+        self.sidebar_title = tk.Label(
+            self.sidebar_header, text="作業清單", bg=SIDEBAR_BG, anchor="w",
             padx=14, pady=11, font=("Segoe UI", 11, "bold"),
-        ).pack(side=tk.TOP, fill=tk.X)
-        tk.Frame(self.sidebar, height=1, bg=SIDEBAR_LINE).pack(side=tk.TOP, fill=tk.X)
+        )
+        self.sidebar_toggle = tk.Label(
+            self.sidebar_header, text="◀", bg=SIDEBAR_BG, fg="#5a6472",
+            padx=10, pady=11, cursor="hand2", font=("Segoe UI", 10),
+        )
+        self.sidebar_toggle.bind("<Button-1>", lambda _e: self._toggle_sidebar())
+        self.sidebar_toggle.bind(
+            "<Enter>", lambda _e: self.sidebar_toggle.configure(bg=NAV_HOVER))
+        self.sidebar_toggle.bind(
+            "<Leave>", lambda _e: self.sidebar_toggle.configure(bg=SIDEBAR_BG))
+
+        self.sidebar_sep = tk.Frame(self.sidebar, height=1, bg=SIDEBAR_LINE)
         self.nav_frame = tk.Frame(self.sidebar, bg=SIDEBAR_BG)
-        self.nav_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self._apply_sidebar_state()
 
         self.content = ttk.Frame(body)
         self.content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    def _toggle_sidebar(self) -> None:
+        self.settings["sidebar_collapsed"] = not self.settings.get(
+            "sidebar_collapsed", False)
+        settings.save(self.settings)
+        self._apply_sidebar_state()
+
+    def _apply_sidebar_state(self) -> None:
+        collapsed = self.settings.get("sidebar_collapsed", False)
+        # 不論狀態都先解綁,再依目前狀態重新 pack,順序才不會錯
+        self.sidebar_title.pack_forget()
+        self.sidebar_toggle.pack_forget()
+        self.sidebar_sep.pack_forget()
+        self.nav_frame.pack_forget()
+        if collapsed:
+            self.sidebar.configure(width=SIDEBAR_W_COLLAPSED)
+            self.sidebar_toggle.configure(text="▶")
+            # 收合時只剩按鈕,撐滿整個窄條好點擊
+            self.sidebar_toggle.pack(side=tk.TOP, fill=tk.X)
+        else:
+            self.sidebar.configure(width=SIDEBAR_W)
+            self.sidebar_toggle.configure(text="◀")
+            self.sidebar_title.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            self.sidebar_toggle.pack(side=tk.RIGHT)
+            self.sidebar_sep.pack(side=tk.TOP, fill=tk.X)
+            self.nav_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
     def set_status(self, msg: str) -> None:
         self.status_var.set(msg)
@@ -545,11 +586,13 @@ class LauncherApp(tk.Tk):
         return True
 
     def _installed_visible(self, tool_id: str) -> bool:
-        """已安裝工具是否該顯示在左側清單。"""
-        t = self._tool_by_id(tool_id)
-        if t is None:
-            return True  # 不在 catalog,無法判斷,仍顯示
-        return self._is_visible(t)
+        """已安裝工具一律顯示在左側清單。
+
+        即使 catalog 把它標為 hidden(例如已被取代要下架的工具),也仍顯示,
+        讓使用者能右鍵移除。否則 hidden 一掛上去,UI 整個消失,使用者無從
+        卸載,工具夾就留在磁碟上孤兒。
+        """
+        return True
 
     def try_unlock(self, code: str) -> list[str]:
         """以解鎖碼比對隱藏工具;回傳這次新解鎖的工具名稱清單。
@@ -672,7 +715,34 @@ class LauncherApp(tk.Tk):
             menu.add_command(label="還原預設名稱",
                              command=lambda: self._reset_tool_name(tool_id))
 
+        # 只有「在 catalog 不可見」的工具(hidden 未解鎖 / 已下架)才在右鍵
+        # 加移除 — 一般工具走工具清單卡片的移除鈕,避免誤刪
+        t = self._tool_by_id(tool_id)
+        unreachable_in_catalog = t is None or (
+            t.get("hidden") and tool_id not in self.settings.get("unlocked", []))
+        if unreachable_in_catalog:
+            menu.add_separator()
+            menu.add_command(label="移除…", foreground="#c0392b",
+                             command=lambda: self._remove_installed_tool(tool_id))
+
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _remove_installed_tool(self, tool_id: str) -> None:
+        name = self._tool_name(tool_id)
+        if not messagebox.askyesno(
+                "移除", f"確定要移除「{name}」嗎?\n工具檔案會從磁碟刪除。"):
+            return
+        try:
+            installer.uninstall(tool_id)
+            self.set_status(f"已移除:{name}")
+            # 工具清單面板若已開,同步更新卡片狀態
+            cat = self._panels.get("catalog")
+            if isinstance(cat, CatalogPanel):
+                cat._installed = installer.load_installed()
+                cat.render()
+            self.on_installed_changed()
+        except Exception as e:
+            messagebox.showerror("移除失敗", str(e))
 
     def _rename_tool(self, tool_id: str) -> None:
         new = simpledialog.askstring(
