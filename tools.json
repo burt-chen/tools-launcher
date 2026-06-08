@@ -90,7 +90,7 @@
     {
       "id": "PDF-Splitte",
       "name": "PDF切割",
-      "description": "可將PDF 依關鍵字、固定頁數、頁碼、自訂規則 進行PDF切割分檔",
+      "description": "⚠️ 已由「PDF工具集」取代,建議右鍵移除本工具,改裝 PDF工具集",
       "version": "1.0.1",
       "size_bytes": 19379,
       "url": "https://github.com/burt-chen/PDF-Splitte/releases/download/v1.0.1/PDF-Splitte-v1.0.1.zip",
@@ -104,7 +104,8 @@
           "size_bytes": 19379
         }
       ],
-      "installed_size_bytes": 53312194
+      "installed_size_bytes": 53312194,
+      "hidden": true
     },
     {
       "id": "land-query",
