@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-06-08",
+  "updated_at": "2026-06-09",
   "launcher": {
     "version": "1.1.8",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.1.8/MyToolsLauncher.exe",
@@ -39,11 +39,6 @@
       "category": "資料處理",
       "homepage": "https://github.com/burt-chen/table-lookup",
       "versions": [
-        {
-          "version": "1.0.0",
-          "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.0.0/table-lookup-v1.0.0.zip",
-          "size_bytes": 23009
-        },
         {
           "version": "1.3.0",
           "url": "https://github.com/burt-chen/table-lookup/releases/download/v1.3.0/table-lookup-v1.3.0.zip",
@@ -119,21 +114,6 @@
       "homepage": "https://github.com/burt-chen/land-query",
       "versions": [
         {
-          "version": "1.0.0",
-          "url": "https://github.com/burt-chen/land-query/releases/download/v1.0.0/land-query-v1.0.0.zip",
-          "size_bytes": 65378
-        },
-        {
-          "version": "1.1.0",
-          "url": "https://github.com/burt-chen/land-query/releases/download/v1.1.0/land-query-v1.1.0.zip",
-          "size_bytes": 65747
-        },
-        {
-          "version": "1.2.0",
-          "url": "https://github.com/burt-chen/land-query/releases/download/v1.2.0/land-query-v1.2.0.zip",
-          "size_bytes": 22317
-        },
-        {
           "version": "1.3.0",
           "url": "https://github.com/burt-chen/land-query/releases/download/v1.3.0/land-query-v1.3.0.zip",
           "size_bytes": 24602
@@ -153,16 +133,6 @@
       "homepage": "https://github.com/burt-chen/DWG-to-PDF",
       "versions": [
         {
-          "version": "1.1.15",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.15/DWG-to-PDF-v1.1.15.zip",
-          "size_bytes": 28495613
-        },
-        {
-          "version": "1.1.14",
-          "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.14/DWG-to-PDF-v1.1.14.zip",
-          "size_bytes": 28495613
-        },
-        {
           "version": "1.1.16",
           "url": "https://github.com/burt-chen/DWG-to-PDF/releases/download/v1.1.16/DWG-to-PDF-v1.1.16.zip",
           "size_bytes": 28495950
@@ -176,41 +146,36 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.0.1",
-      "size_bytes": 40317,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.1/PDFToolkit-v1.0.1.zip",
-      "sha256": "5c0c8e90fe68927cb306904f8aba2f1af84c9e7b646a4b84487d981e09c75dfe",
+      "version": "1.0.2",
+      "size_bytes": 50797,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.2/PDFToolkit-v1.0.2.zip",
+      "sha256": "687bb05a9fab0558af01e88d9d0c9903d5a9ef7e447de9695fbf953a99b2bc31",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
         {
-          "version": "1.0.0",
-          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.0/PDFToolkit-v1.0.0.zip",
-          "size_bytes": 37758
-        },
-        {
-          "version": "1.0.1",
-          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.1/PDFToolkit-v1.0.1.zip",
-          "size_bytes": 40317
+          "version": "1.0.2",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.2/PDFToolkit-v1.0.2.zip",
+          "size_bytes": 50797
         }
       ],
-      "installed_size_bytes": 54812848
+      "installed_size_bytes": 54823328
     },
     {
       "id": "photoTool",
       "name": "照片批次加註工具",
-      "description": "批次在照片上加註文字(日期/座標/檔名或自訂);支援對照表、EXIF資訊、白字黑框等樣式、四角位置與預覽",
-      "version": "1.0.0",
-      "size_bytes": 17067,
-      "url": "https://github.com/burt-chen/photoTool/releases/download/v1.0.0/photoTool-v1.0.0.zip",
-      "sha256": "b25be8fd0721d28cc6d3f702c6f8c53b341f831b8df415a2db4c4180aa0812ee",
+      "description": "批次在照片上加註文字(日期/座標/檔名或自訂);支援對照表、EXIF資訊(可轉民國年)、白字黑框等樣式、四角位置、樣式另存與縮圖預覽",
+      "version": "1.1.0",
+      "size_bytes": 24148,
+      "url": "https://github.com/burt-chen/photoTool/releases/download/v1.1.0/photoTool-v1.1.0.zip",
+      "sha256": "07bca6122c3a48e22af696614227dd5b86bc5cccb5c6d9a118e337cd4f3f147d",
       "category": "影像處理",
       "homepage": "https://github.com/burt-chen/photoTool",
       "versions": [
         {
-          "version": "1.0.0",
-          "url": "https://github.com/burt-chen/photoTool/releases/download/v1.0.0/photoTool-v1.0.0.zip",
-          "size_bytes": 17067
+          "version": "1.1.0",
+          "url": "https://github.com/burt-chen/photoTool/releases/download/v1.1.0/photoTool-v1.1.0.zip",
+          "size_bytes": 24148
         }
       ]
     }
