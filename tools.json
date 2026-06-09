@@ -146,20 +146,20 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.0.2",
-      "size_bytes": 50797,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.2/PDFToolkit-v1.0.2.zip",
-      "sha256": "687bb05a9fab0558af01e88d9d0c9903d5a9ef7e447de9695fbf953a99b2bc31",
+      "version": "1.1.0",
+      "size_bytes": 3885828,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.0/PDFToolkit-v1.1.0.zip",
+      "sha256": "c10f9e1d8b1b265b629099719e64eec25a9007277aee6672377d1e10e279523c",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
         {
-          "version": "1.0.2",
-          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.0.2/PDFToolkit-v1.0.2.zip",
-          "size_bytes": 50797
+          "version": "1.1.0",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.0/PDFToolkit-v1.1.0.zip",
+          "size_bytes": 3885828
         }
       ],
-      "installed_size_bytes": 54823328
+      "installed_size_bytes": 58658359
     },
     {
       "id": "photoTool",
