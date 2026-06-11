@@ -11,10 +11,10 @@
       "id": "tools-releases-pack",
       "name": "releases打包工具",
       "description": "releases打包工具產生tools",
-      "version": "1.4.0",
-      "size_bytes": 17671,
-      "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.4.0/tools-releases-pack-v1.4.0.zip",
-      "sha256": "3b07a8618e0abaa2678174dd37ed23507594d008ce3692912f4cfd646e859d85",
+      "version": "1.5.0",
+      "size_bytes": 19820,
+      "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.5.0/tools-releases-pack-v1.5.0.zip",
+      "sha256": "427f827f754a7f4f5591347b01bcfbdabef69fe7a039be6ff117a13fac509008",
       "category": "程式開發工具",
       "homepage": "https://github.com/burt-chen/tools-releases-pack",
       "versions": [
@@ -22,11 +22,36 @@
           "version": "1.4.0",
           "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.4.0/tools-releases-pack-v1.4.0.zip",
           "size_bytes": 17671
+        },
+        {
+          "version": "1.0.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.0.0/tools-releases-pack-v1.0.0.zip",
+          "size_bytes": 15104
+        },
+        {
+          "version": "1.1.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.1.0/tools-releases-pack-v1.1.0.zip",
+          "size_bytes": 15923
+        },
+        {
+          "version": "1.2.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.2.0/tools-releases-pack-v1.2.0.zip",
+          "size_bytes": 16446
+        },
+        {
+          "version": "1.3.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.3.0/tools-releases-pack-v1.3.0.zip",
+          "size_bytes": 17415
+        },
+        {
+          "version": "1.5.0",
+          "url": "https://github.com/burt-chen/tools-releases-pack/releases/download/v1.5.0/tools-releases-pack-v1.5.0.zip",
+          "size_bytes": 19820
         }
       ],
       "hidden": true,
       "unlock_hash": "20195541dc5dea5603773149612ec32f159351afae65c7ee53a915acd2d8b8e9",
-      "installed_size_bytes": 17671
+      "installed_size_bytes": 19820
     },
     {
       "id": "table-lookup",
