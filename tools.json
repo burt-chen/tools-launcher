@@ -171,10 +171,10 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.1.0",
-      "size_bytes": 3885828,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.0/PDFToolkit-v1.1.0.zip",
-      "sha256": "c10f9e1d8b1b265b629099719e64eec25a9007277aee6672377d1e10e279523c",
+      "version": "1.1.1",
+      "size_bytes": 57424,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit-v1.1.1.zip",
+      "sha256": "5cfd6ee0f1ae877e2286d06c2f60180afe5c922fa832fb89c42616f7056db92f",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
@@ -182,9 +182,24 @@
           "version": "1.1.0",
           "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.0/PDFToolkit-v1.1.0.zip",
           "size_bytes": 3885828
+        },
+        {
+          "version": "1.1.1",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit-v1.1.1.zip",
+          "size_bytes": 57424
         }
       ],
-      "installed_size_bytes": 58658359
+      "installed_size_bytes": 54829955,
+      "manual_video": {
+        "version": "1.1.1",
+        "filename": "PDFToolkit_manual-v1.1.1.mp4",
+        "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit_manual-v1.1.1.mp4",
+        "size_bytes": 3012183,
+        "sha256": "f1fb95e54759997dce7d4a29842a0000e0b2d26058d80ad9d235921e15756f8e",
+        "type": "silent",
+        "updated_at": "2026-06-11",
+        "duration_seconds": 112
+      }
     },
     {
       "id": "photoTool",
