@@ -8,6 +8,8 @@ from . import config
 DEFAULTS = {
     # 切換工具時是否保留已載入的工具畫面與狀態
     "keep_tools_loaded": True,
+    # 是否允許切換到舊版本(預設關,避免誤裝舊版有 bug 的工具)
+    "enable_version_switch": False,
     # 我的最愛:工具 id 清單
     "favorites": [],
     # 自訂分組:[{"name": str, "tools": [tool_id, ...]}]

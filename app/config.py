@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 APP_NAME = "MyTools"
-APP_VERSION = "1.1.8"  # Launcher 自身版本,與 tools.json 的 launcher.version 比對
+APP_VERSION = "1.2.0"  # Launcher 自身版本,與 tools.json 的 launcher.version 比對
 
 # Catalog 來源 URL。優先讀環境變數,方便測試切換到本地檔。
 # 例:set MYTOOLS_CATALOG_URL=file:///D:/工具開發/小工具管理/tools.json
@@ -21,6 +21,7 @@ TOOLS_DIR = ROOT / "tools"
 INSTALLED_JSON = ROOT / "installed.json"
 CATALOG_CACHE = ROOT / "catalog_cache.json"
 SETTINGS_JSON = ROOT / "settings.json"
+VIDEO_CACHE = ROOT / "video_cache"  # 操作影片本機快取(tool_id-version.mp4)
 
 HTTP_TIMEOUT = 10
 DOWNLOAD_CHUNK = 64 * 1024
@@ -38,3 +39,4 @@ PYTHON_EXE = LAUNCHER_DIR / "python" / "python.exe"
 def ensure_dirs() -> None:
     ROOT.mkdir(parents=True, exist_ok=True)
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+    VIDEO_CACHE.mkdir(parents=True, exist_ok=True)

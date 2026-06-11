@@ -6,10 +6,14 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import re
 import threading
 import traceback
+import urllib.request
 import tkinter as tk
 import tkinter.font as tkfont
+from pathlib import Path
 from tkinter import ttk, messagebox, simpledialog
 from typing import Callable
 
@@ -18,7 +22,13 @@ from typing import Callable
 # 偷改全域命名字型,導致先開的工具切回來字被放大)。
 UI_FONT_SIZE = 12
 
-from . import catalog, config, installer, launcher_run, python_env, self_update, settings
+from . import (catalog, catalog_sync, config, installer, launcher_run,
+               python_env, self_update, settings)
+
+# Catalog 維護面板的解鎖碼(明文 "apply_tool" 的 SHA256)
+CATALOG_SYNC_UNLOCK_HASH = (
+    "0410e397c64b510f5b923b0031469bc449dffac1d77039a76ca1b44a33723ed0"
+)
 
 SIDEBAR_W = 222
 SIDEBAR_W_COLLAPSED = 32
@@ -231,6 +241,7 @@ class LauncherApp(tk.Tk):
         self._drop_marker: tk.Frame | None = None
         self._current_key: str | None = None
         self._launcher_update: tuple[str, str, str] | None = None  # (version, url, sha256)
+        self._update_prompted = False  # 當次 session 是否已主動詢問過 launcher 更新
 
         self._build_layout()
         self._rebuild_nav()
@@ -321,6 +332,14 @@ class LauncherApp(tk.Tk):
             item.lbl.configure(fg="#c0392b")   # 有新版 → 紅字
         item.pack(side=tk.BOTTOM, fill=tk.X)
         self._nav_items.append(item)
+
+        # Catalog 維護(解鎖後才顯示)— 釘在「設定」上方
+        if self.settings.get("catalog_sync_unlocked"):
+            cs_item = NavItem(self.nav_frame, "catalog_sync",
+                              "Catalog 維護", self._show)
+            cs_item.pack(side=tk.BOTTOM, fill=tk.X)
+            self._nav_items.append(cs_item)
+
         tk.Frame(self.nav_frame, height=1, bg=SIDEBAR_LINE).pack(
             side=tk.BOTTOM, fill=tk.X, padx=8, pady=4)
 
@@ -503,6 +522,8 @@ class LauncherApp(tk.Tk):
             panel: tk.Widget = CatalogPanel(self.content, self)
         elif key == "settings":
             panel = SettingsPanel(self.content, self)
+        elif key == "catalog_sync":
+            panel = catalog_sync.CatalogSyncPanel(self.content, self)
         else:
             panel = self._build_tool_panel(key)
         self._panels[key] = panel
@@ -547,6 +568,11 @@ class LauncherApp(tk.Tk):
             self._panels.pop("settings")
             sp.destroy()
         self._rebuild_nav()
+        # 首次發現有 launcher 新版時主動跳詢問;同 session 不再問,
+        # 拒絕後可以隨時再從「設定」分頁手動更新
+        if self._launcher_update and not self._update_prompted:
+            self._update_prompted = True
+            self.after(300, self._do_launcher_update)
 
     def on_installed_changed(self, reinstalled_id: str | None = None) -> None:
         self._installed = installer.load_installed()
@@ -599,6 +625,7 @@ class LauncherApp(tk.Tk):
 
         共用密碼(master_unlock_hash)比中 → 解鎖全部隱藏工具;
         否則比對各工具的 unlock_hash → 只解鎖對應工具。
+        另:輸入 "apply_tool" 會解鎖 Catalog 維護面板(僅 catalog 維護者使用)。
         """
         code = (code or "").strip()
         if not code:
@@ -609,6 +636,12 @@ class LauncherApp(tk.Tk):
 
         master = str(self._catalog.get("master_unlock_hash", "")).lower()
         is_master = bool(master) and digest == master
+
+        # Catalog 維護解鎖(master 也算)
+        if (digest == CATALOG_SYNC_UNLOCK_HASH or is_master) and \
+                not self.settings.get("catalog_sync_unlocked"):
+            self.settings["catalog_sync_unlocked"] = True
+            newly.append("Catalog 維護")
 
         for t in self._catalog.get("tools", []):
             if not t.get("hidden"):
@@ -669,6 +702,133 @@ class LauncherApp(tk.Tk):
         except tk.TclError:
             pass
         messagebox.showerror("更新失敗", f"Launcher 更新失敗:\n{err}")
+
+    # ---------- 操作影片 ----------
+
+    def open_manual_video(self, tool: dict) -> None:
+        """工具卡片「操作影片」入口:有快取直接開,否則下載再開。"""
+        mv = tool.get("manual_video") or {}
+        url = str(mv.get("url") or "").strip()
+        if not url:
+            messagebox.showinfo("操作影片", "這個工具目前沒有操作影片。", parent=self)
+            return
+
+        config.ensure_dirs()
+        tool_id = str(tool.get("id", "tool"))
+        ver = str(mv.get("version") or tool.get("version") or "x")
+        # 檔名只用 tool_id + version,避免 manual_video.filename 帶奇怪字元
+        safe = re.sub(r"[^\w.\-]", "_", f"{tool_id}-{ver}")
+        cache_path = config.VIDEO_CACHE / f"{safe}.mp4"
+        expected_sha = str(mv.get("sha256") or "").strip().lower()
+
+        # 已快取且(若有 sha)雜湊對 → 直接開
+        if cache_path.exists():
+            if expected_sha:
+                if _file_sha256(cache_path) == expected_sha:
+                    self._open_video_file(cache_path)
+                    return
+                cache_path.unlink(missing_ok=True)  # 壞檔,重下
+            else:
+                self._open_video_file(cache_path)
+                return
+
+        self._download_video(tool, mv, cache_path)
+
+    def _download_video(self, tool: dict, mv: dict, cache_path: Path) -> None:
+        url = str(mv["url"]).strip()
+        expected_sha = str(mv.get("sha256") or "").strip().lower()
+        expected_size = int(mv.get("size_bytes") or 0)
+        name = tool.get("name", tool.get("id", ""))
+
+        win = tk.Toplevel(self)
+        win.title("下載操作影片")
+        win.geometry("420x160")
+        win.resizable(False, False)
+        win.transient(self)
+        ttk.Label(win, text=f"正在下載「{name}」操作影片…",
+                  padding=(20, 18, 20, 6)).pack(anchor="w")
+        pbar = ttk.Progressbar(win, maximum=100, length=380)
+        pbar.pack(padx=20, pady=(0, 6))
+        msg_var = tk.StringVar(value="")
+        ttk.Label(win, textvariable=msg_var, foreground="#666",
+                  padding=(20, 0)).pack(anchor="w")
+        cancel = {"flag": False}
+        ttk.Button(win, text="取消",
+                   command=lambda: cancel.__setitem__("flag", True)).pack(
+            side="right", padx=20, pady=10)
+
+        def on_progress(d: int, t: int) -> None:
+            if t > 0:
+                win.after(0, lambda: pbar.configure(value=d / t * 100))
+                win.after(0, lambda: msg_var.set(
+                    f"{_fmt_size(d)} / {_fmt_size(t)}"))
+            else:
+                win.after(0, lambda: msg_var.set(_fmt_size(d)))
+
+        def worker() -> None:
+            tmp = cache_path.with_suffix(".part")
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": f"{config.APP_NAME}-Launcher"})
+                sha = hashlib.sha256()
+                downloaded = 0
+                with urllib.request.urlopen(req, timeout=30) as r, \
+                        open(tmp, "wb") as f:
+                    total = expected_size or 0
+                    if not total:
+                        cl = r.headers.get("Content-Length")
+                        if cl and cl.isdigit():
+                            total = int(cl)
+                    while True:
+                        if cancel["flag"]:
+                            raise InterruptedError("使用者取消")
+                        chunk = r.read(config.DOWNLOAD_CHUNK)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        sha.update(chunk)
+                        downloaded += len(chunk)
+                        on_progress(downloaded, total)
+                if expected_sha and sha.hexdigest().lower() != expected_sha:
+                    raise ValueError(
+                        f"影片檔 SHA256 不符:預期 {expected_sha},"
+                        f"實際 {sha.hexdigest()}")
+                tmp.replace(cache_path)
+                win.after(0, lambda: self._on_video_ready(win, cache_path))
+            except BaseException as e:
+                tmp.unlink(missing_ok=True)
+                win.after(0, lambda err=e: self._on_video_failed(win, err))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_video_ready(self, win: tk.Toplevel, cache_path: Path) -> None:
+        try:
+            win.destroy()
+        except tk.TclError:
+            pass
+        self._open_video_file(cache_path)
+
+    def _on_video_failed(self, win: tk.Toplevel, err: BaseException) -> None:
+        try:
+            win.destroy()
+        except tk.TclError:
+            pass
+        if isinstance(err, InterruptedError):
+            self.set_status("已取消下載操作影片")
+        else:
+            messagebox.showerror("下載失敗",
+                                 f"無法下載操作影片:\n{err}", parent=self)
+
+    def _open_video_file(self, path: Path) -> None:
+        """用系統預設應用程式(通常是電影&電視 / 預設播放器)開啟 mp4。"""
+        try:
+            os.startfile(str(path))  # noqa: S606 — Windows API,使用者觸發
+        except Exception as e:
+            messagebox.showerror(
+                "開啟失敗",
+                f"無法開啟影片:\n{path}\n\n{e}\n\n"
+                "請確認系統有可播放 mp4 的應用程式(預設「電影&電視」)。",
+                parent=self)
 
     # ---------- 最愛 / 群組 操作 ----------
 
@@ -1108,6 +1268,10 @@ class ToolCard(ttk.Frame):
         for w in self.button_frame.winfo_children():
             w.destroy()
 
+        # 工具有操作影片時固定先放,順序:操作影片 | 安裝/更新/切換版本/移除
+        if self._manual_video_url():
+            self._add_btn("操作影片", self._open_manual_video)
+
         installed_ver = self.panel.installed_version(self.tool["id"])
         latest = self.tool["version"]
 
@@ -1124,11 +1288,20 @@ class ToolCard(ttk.Frame):
             self._add_version_btn()
             self._add_btn("移除", lambda: self.panel.do_uninstall(self.tool))
 
+    def _manual_video_url(self) -> str:
+        mv = self.tool.get("manual_video") or {}
+        return str(mv.get("url") or "").strip()
+
+    def _open_manual_video(self) -> None:
+        self.panel.app.open_manual_video(self.tool)
+
     def _visible_versions(self) -> list[dict]:
         return [v for v in self.tool.get("versions", []) if not v.get("yanked")]
 
     def _add_version_btn(self) -> None:
-        """有兩個以上未作廢版本時,加「切換版本」按鈕。"""
+        """設定開啟且有兩個以上未作廢版本時,加「切換版本」按鈕。"""
+        if not self.panel.app.settings.get("enable_version_switch", False):
+            return
         if len(self._visible_versions()) > 1:
             self._add_btn("切換版本", self._show_version_menu)
 
@@ -1230,6 +1403,19 @@ class SettingsPanel(ttk.Frame):
             foreground="#666", justify=tk.LEFT,
         ).pack(anchor="w", padx=(22, 0), pady=(2, 0))
 
+        self.ver_switch_var = tk.BooleanVar(
+            value=self.app.settings.get("enable_version_switch", False))
+        ttk.Checkbutton(
+            general, text="允許切換到舊版本",
+            variable=self.ver_switch_var, command=self._on_ver_switch_changed,
+        ).pack(anchor="w", pady=(10, 0))
+        ttk.Label(
+            general,
+            text="開啟:工具卡片會多出「切換版本」按鈕,可降版到先前的版本。\n"
+                 "關閉:只顯示最新版,避免誤裝舊版有 bug 的工具(預設)。",
+            foreground="#666", justify=tk.LEFT,
+        ).pack(anchor="w", padx=(22, 0), pady=(2, 0))
+
         groups_box = ttk.LabelFrame(self, text="工具分組", padding=14)
         groups_box.pack(fill=tk.X, anchor="w", pady=(14, 0))
         ttk.Label(
@@ -1276,6 +1462,16 @@ class SettingsPanel(ttk.Frame):
         settings.save(self.app.settings)
         state = "保留" if self.keep_var.get() else "每次重新載入"
         self.app.set_status(f"設定已儲存:切換工具時{state}")
+
+    def _on_ver_switch_changed(self) -> None:
+        self.app.settings["enable_version_switch"] = self.ver_switch_var.get()
+        settings.save(self.app.settings)
+        # 重繪工具清單,讓「切換版本」按鈕跟著出現/消失
+        cat = self.app._panels.get("catalog")
+        if isinstance(cat, CatalogPanel):
+            cat.render()
+        state = "允許" if self.ver_switch_var.get() else "禁用"
+        self.app.set_status(f"設定已儲存:{state}切換到舊版本")
 
     def refresh_groups(self) -> None:
         for w in self.groups_inner.winfo_children():
@@ -1329,6 +1525,14 @@ def _apply_global_fonts(style: ttk.Style, size: int) -> None:
         style.configure("Treeview", rowheight=int(size * 2.0))
     except tk.TclError:
         pass
+
+
+def _file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(64 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest().lower()
 
 
 def _fmt_size(n: float) -> str:
