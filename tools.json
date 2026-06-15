@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-06-12",
+  "updated_at": "2026-06-15",
   "launcher": {
     "version": "1.2.0",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.2.0/MyToolsLauncher.exe",
@@ -131,10 +131,10 @@
       "id": "land-query",
       "name": "國土圖台批次查詢",
       "description": "批次查詢國土測繪地籍資料",
-      "version": "1.4.0",
-      "size_bytes": 33749,
-      "url": "https://github.com/burt-chen/land-query/releases/download/v1.4.0/land-query-v1.4.0.zip",
-      "sha256": "3382059bb3369f576bf3be2729e6fd6c8bc9268ab095b5589b92c24e35eec8f9",
+      "version": "1.5.0",
+      "size_bytes": 33875,
+      "url": "https://github.com/burt-chen/land-query/releases/download/v1.5.0/land-query-v1.5.0.zip",
+      "sha256": "ba64f168d05af1bd6d4fe5c4121517c08dbfce928aa6705a18217aa3268e41f4",
       "category": "資料查詢",
       "homepage": "https://github.com/burt-chen/land-query",
       "versions": [
@@ -147,17 +147,22 @@
           "version": "1.4.0",
           "url": "https://github.com/burt-chen/land-query/releases/download/v1.4.0/land-query-v1.4.0.zip",
           "size_bytes": 33749
+        },
+        {
+          "version": "1.5.0",
+          "url": "https://github.com/burt-chen/land-query/releases/download/v1.5.0/land-query-v1.5.0.zip",
+          "size_bytes": 33875
         }
       ],
-      "installed_size_bytes": 5230555,
+      "installed_size_bytes": 5230681,
       "manual_video": {
-        "version": "1.4.0",
-        "filename": "land-query_manual-v1.4.0.mp4",
-        "url": "https://github.com/burt-chen/land-query/releases/download/v1.4.0/land-query_manual-v1.4.0.mp4",
+        "version": "1.5.0",
+        "filename": "land-query_manual-v1.5.0.mp4",
+        "url": "https://github.com/burt-chen/land-query/releases/download/v1.5.0/land-query_manual-v1.5.0.mp4",
         "size_bytes": 1518970,
         "sha256": "91617a71aefef2bdd8307d472d3d7d7095add2f7e1bc9ad0062299c00983efae",
         "type": "silent",
-        "updated_at": "2026-06-12",
+        "updated_at": "2026-06-15",
         "duration_seconds": 56
       }
     },
