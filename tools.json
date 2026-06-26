@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-06-15",
+  "updated_at": "2026-06-26",
   "launcher": {
     "version": "1.2.0",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.2.0/MyToolsLauncher.exe",
@@ -196,10 +196,10 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.1.1",
-      "size_bytes": 57424,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit-v1.1.1.zip",
-      "sha256": "5cfd6ee0f1ae877e2286d06c2f60180afe5c922fa832fb89c42616f7056db92f",
+      "version": "1.1.2",
+      "size_bytes": 57691,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit-v1.1.2.zip",
+      "sha256": "399c071bbde59fdebe1f9cbcd374b53790276900baa4397e6e218c69d8165b02",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
@@ -212,17 +212,22 @@
           "version": "1.1.1",
           "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit-v1.1.1.zip",
           "size_bytes": 57424
+        },
+        {
+          "version": "1.1.2",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit-v1.1.2.zip",
+          "size_bytes": 57691
         }
       ],
-      "installed_size_bytes": 54829955,
+      "installed_size_bytes": 54830222,
       "manual_video": {
-        "version": "1.1.1",
-        "filename": "PDFToolkit_manual-v1.1.1.mp4",
-        "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.1/PDFToolkit_manual-v1.1.1.mp4",
+        "version": "1.1.2",
+        "filename": "PDFToolkit_manual-v1.1.2.mp4",
+        "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit_manual-v1.1.2.mp4",
         "size_bytes": 3012183,
         "sha256": "f1fb95e54759997dce7d4a29842a0000e0b2d26058d80ad9d235921e15756f8e",
         "type": "silent",
-        "updated_at": "2026-06-11",
+        "updated_at": "2026-06-26",
         "duration_seconds": 112
       }
     },
