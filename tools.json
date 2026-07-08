@@ -253,10 +253,10 @@
       "id": "tender-notice",
       "name": "政府採購網標案批次查詢",
       "description": "政府採購網標案批次查詢",
-      "version": "1.0.0",
-      "size_bytes": 20052,
-      "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.0/tender-notice-v1.0.0.zip",
-      "sha256": "f3ee9fba984b8222a91eca424528a9f01e737ab577f9055c064e92eced984bb1",
+      "version": "1.0.1",
+      "size_bytes": 20456,
+      "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice-v1.0.1.zip",
+      "sha256": "0ec0db3a56a8810314ee6107889b0fb5b33bfd5504368723107168ce154c51cc",
       "category": "資料查詢",
       "homepage": "https://github.com/burt-chen/tender-notice",
       "versions": [
@@ -264,13 +264,18 @@
           "version": "1.0.0",
           "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.0/tender-notice-v1.0.0.zip",
           "size_bytes": 20052
+        },
+        {
+          "version": "1.0.1",
+          "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice-v1.0.1.zip",
+          "size_bytes": 20456
         }
       ],
-      "installed_size_bytes": 6781082,
+      "installed_size_bytes": 6781486,
       "manual_video": {
-        "version": "1.0.0",
-        "filename": "tender-notice_manual-v1.0.0.mp4",
-        "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.0/tender-notice_manual-v1.0.0.mp4",
+        "version": "1.0.1",
+        "filename": "tender-notice_manual-v1.0.1.mp4",
+        "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice_manual-v1.0.1.mp4",
         "size_bytes": 2768813,
         "sha256": "389f0d6f647b0a1a17ee32d03657aebcabaf68f7de507d4ecb6497f3f9c74b61",
         "type": "silent",
