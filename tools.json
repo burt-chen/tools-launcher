@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-07-08",
+  "updated_at": "2026-07-09",
   "launcher": {
     "version": "1.2.0",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.2.0/MyToolsLauncher.exe",
@@ -253,10 +253,10 @@
       "id": "tender-notice",
       "name": "政府採購網標案批次查詢",
       "description": "政府採購網標案批次查詢",
-      "version": "1.0.1",
-      "size_bytes": 20456,
-      "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice-v1.0.1.zip",
-      "sha256": "0ec0db3a56a8810314ee6107889b0fb5b33bfd5504368723107168ce154c51cc",
+      "version": "1.0.2",
+      "size_bytes": 24322,
+      "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.2/tender-notice-v1.0.2.zip",
+      "sha256": "f87a58c098fda014b2196f79a5ac7d1ce9fa602ba2f3bd497da932e290d35b49",
       "category": "資料查詢",
       "homepage": "https://github.com/burt-chen/tender-notice",
       "versions": [
@@ -269,18 +269,23 @@
           "version": "1.0.1",
           "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice-v1.0.1.zip",
           "size_bytes": 20456
+        },
+        {
+          "version": "1.0.2",
+          "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.2/tender-notice-v1.0.2.zip",
+          "size_bytes": 24322
         }
       ],
-      "installed_size_bytes": 6781486,
+      "installed_size_bytes": 6785352,
       "manual_video": {
-        "version": "1.0.1",
-        "filename": "tender-notice_manual-v1.0.1.mp4",
-        "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.1/tender-notice_manual-v1.0.1.mp4",
-        "size_bytes": 2768813,
-        "sha256": "389f0d6f647b0a1a17ee32d03657aebcabaf68f7de507d4ecb6497f3f9c74b61",
+        "version": "1.0.2",
+        "filename": "tender-notice_manual-v1.0.2.mp4",
+        "url": "https://github.com/burt-chen/tender-notice/releases/download/v1.0.2/tender-notice_manual-v1.0.2.mp4",
+        "size_bytes": 3322503,
+        "sha256": "550c1f5e924dd61eda7ae09cde0de00c33de69b3f90a834bed40e5658dc27284",
         "type": "silent",
-        "updated_at": "2026-07-08",
-        "duration_seconds": 97
+        "updated_at": "2026-07-09",
+        "duration_seconds": 118
       }
     }
   ],
