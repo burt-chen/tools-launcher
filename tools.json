@@ -1,6 +1,6 @@
 {
   "catalog_version": 2,
-  "updated_at": "2026-07-09",
+  "updated_at": "2026-07-20",
   "launcher": {
     "version": "1.2.0",
     "url": "https://github.com/burt-chen/tools-launcher/releases/download/v1.2.0/MyToolsLauncher.exe",
@@ -196,10 +196,10 @@
       "id": "PDFToolkit",
       "name": "PDF工具集",
       "description": "PDF檢視/切割/文字替換 等工具",
-      "version": "1.1.2",
-      "size_bytes": 57691,
-      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit-v1.1.2.zip",
-      "sha256": "399c071bbde59fdebe1f9cbcd374b53790276900baa4397e6e218c69d8165b02",
+      "version": "1.2.0",
+      "size_bytes": 66637,
+      "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.2.0/PDFToolkit-v1.2.0.zip",
+      "sha256": "abac86a262e2209a4856bf784baea725af3a523d1a18f03e952abb622ca9dc1d",
       "category": "PDF處理",
       "homepage": "https://github.com/burt-chen/PDFToolkit",
       "versions": [
@@ -217,18 +217,23 @@
           "version": "1.1.2",
           "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit-v1.1.2.zip",
           "size_bytes": 57691
+        },
+        {
+          "version": "1.2.0",
+          "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.2.0/PDFToolkit-v1.2.0.zip",
+          "size_bytes": 66637
         }
       ],
-      "installed_size_bytes": 54830222,
+      "installed_size_bytes": 57968051,
       "manual_video": {
-        "version": "1.1.2",
-        "filename": "PDFToolkit_manual-v1.1.2.mp4",
-        "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.1.2/PDFToolkit_manual-v1.1.2.mp4",
-        "size_bytes": 3012183,
-        "sha256": "f1fb95e54759997dce7d4a29842a0000e0b2d26058d80ad9d235921e15756f8e",
+        "version": "1.2.0",
+        "filename": "PDFToolkit_manual-v1.2.0.mp4",
+        "url": "https://github.com/burt-chen/PDFToolkit/releases/download/v1.2.0/PDFToolkit_manual-v1.2.0.mp4",
+        "size_bytes": 3971011,
+        "sha256": "2aefb48a33f9627b8d65ce218ced1a3aec24c86e9ef9178309ae824920ec033e",
         "type": "silent",
-        "updated_at": "2026-06-26",
-        "duration_seconds": 112
+        "updated_at": "2026-07-20",
+        "duration_seconds": 146
       }
     },
     {
